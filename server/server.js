@@ -12,7 +12,9 @@ const User = require('./models/User');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "https://iiitsurat-tnp-attendance.netlify.app"
+}));
 app.use(express.json());
 
 app.use('/auth', authRoutes);
