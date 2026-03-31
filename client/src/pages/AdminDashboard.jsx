@@ -27,7 +27,7 @@ const AdminDashboard = () => {
   const fetchProfessors = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/admin/professors', {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/professors`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setProfessors(res.data);
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/attendance', {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setData(res.data);
@@ -60,7 +60,7 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await axios.post('http://localhost:5000/admin/add-professor', 
+      await axios.post(`${import.meta.env.VITE_API_URL}/admin/add-professor`, 
         { email: newEmail, password: newPassword, subject: newSubjects },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -74,7 +74,7 @@ const AdminDashboard = () => {
   const handleRemoveProfessor = async (id) => {
     if (!window.confirm('Are you sure you want to remove this professor?')) return;
     try {
-      await axios.delete(`http://localhost:5000/admin/remove-professor/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/admin/remove-professor/${id}`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       await fetchProfessors();
@@ -95,7 +95,7 @@ const AdminDashboard = () => {
 
   const saveEditedSubjects = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/admin/update-subjects/${id}`, 
+      await axios.put(`${import.meta.env.VITE_API_URL}/admin/update-subjects/${id}`, 
         { subject: editSubjectsInput },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -108,7 +108,7 @@ const AdminDashboard = () => {
 
   const handleExportCSV = () => {
     axios({
-      url: `http://localhost:5000/attendance/download?format=csv`,
+      url: `${import.meta.env.VITE_API_URL}/attendance/download?format=csv`,
       method: 'GET',
       responseType: 'blob',
       headers: { Authorization: `Bearer ${user.token}` }

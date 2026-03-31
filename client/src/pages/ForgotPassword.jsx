@@ -27,7 +27,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post('http://localhost:5000/auth/forgot-password', { email });
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, { email });
       setSuccess(res.data.message || 'OTP sent to your email');
       setStep(2); // Move to OTP input view
     } catch (err) {
@@ -54,7 +54,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      await axios.post('http://localhost:5000/auth/reset-password', {
+      await axios.post(`${import.meta.env.VITE_API_URL}/auth/reset-password`, {
         email,
         otp,
         newPassword

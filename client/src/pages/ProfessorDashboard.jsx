@@ -27,7 +27,7 @@ const ProfessorDashboard = () => {
   const fetchData = async (subjectContext) => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/attendance', {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` },
         params: { subject: subjectContext }
       });
@@ -62,7 +62,7 @@ const ProfessorDashboard = () => {
     if (selectedDates.size === 0) return;
     try {
       setProcessing(true);
-      await axios.post('http://localhost:5000/attendance/mark', 
+      await axios.post(`${import.meta.env.VITE_API_URL}/attendance/mark`, 
         { subject: selectedSubject, dates: Array.from(selectedDates) },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -80,7 +80,7 @@ const ProfessorDashboard = () => {
 
   const handleExportCSV = () => {
     axios({
-      url: `http://localhost:5000/attendance/download?format=csv&subject=${selectedSubject}`,
+      url: `${import.meta.env.VITE_API_URL}/attendance/download?format=csv&subject=${selectedSubject}`,
       method: 'GET',
       responseType: 'blob',
       headers: { Authorization: `Bearer ${user.token}` }
