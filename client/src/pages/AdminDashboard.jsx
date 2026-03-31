@@ -27,7 +27,7 @@ const AdminDashboard = () => {
   const fetchProfessors = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/professors`, {
+      const res = await axios.get(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/admin/professors`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setProfessors(res.data);
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/attendance`, {
+      const res = await axios.get(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setData(res.data);
@@ -60,7 +60,7 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/admin/add-professor`, 
+      await axios.post(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/admin/add-professor`, 
         { email: newEmail, password: newPassword, subject: newSubjects },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -74,7 +74,7 @@ const AdminDashboard = () => {
   const handleRemoveProfessor = async (id) => {
     if (!window.confirm('Are you sure you want to remove this professor?')) return;
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/admin/remove-professor/${id}`, {
+      await axios.delete(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/admin/remove-professor/${id}`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       await fetchProfessors();
@@ -95,7 +95,7 @@ const AdminDashboard = () => {
 
   const saveEditedSubjects = async (id) => {
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/admin/update-subjects/${id}`, 
+      await axios.put(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/admin/update-subjects/${id}`, 
         { subject: editSubjectsInput },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -108,7 +108,7 @@ const AdminDashboard = () => {
 
   const handleExportCSV = () => {
     axios({
-      url: `${import.meta.env.VITE_API_URL}/attendance/download?format=csv`,
+      url: `${https://tnp-attendance-system-production-5a81.up.railway.app/}/attendance/download?format=csv`,
       method: 'GET',
       responseType: 'blob',
       headers: { Authorization: `Bearer ${user.token}` }

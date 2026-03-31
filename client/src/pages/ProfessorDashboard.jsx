@@ -27,7 +27,7 @@ const ProfessorDashboard = () => {
   const fetchData = async (subjectContext) => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/attendance`, {
+      const res = await axios.get(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` },
         params: { subject: subjectContext }
       });
@@ -62,7 +62,7 @@ const ProfessorDashboard = () => {
     if (selectedDates.size === 0) return;
     try {
       setProcessing(true);
-      await axios.post(`${import.meta.env.VITE_API_URL}/attendance/mark`, 
+      await axios.post(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/attendance/mark`, 
         { subject: selectedSubject, dates: Array.from(selectedDates) },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -80,7 +80,7 @@ const ProfessorDashboard = () => {
 
   const handleExportCSV = () => {
     axios({
-      url: `${import.meta.env.VITE_API_URL}/attendance/download?format=csv&subject=${selectedSubject}`,
+      url: `${https://tnp-attendance-system-production-5a81.up.railway.app/}/attendance/download?format=csv&subject=${selectedSubject}`,
       method: 'GET',
       responseType: 'blob',
       headers: { Authorization: `Bearer ${user.token}` }
