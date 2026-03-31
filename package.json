@@ -1,0 +1,13 @@
+{
+  "name": "tnp-attendance-backend-proxy",
+  "version": "1.0.0",
+  "description": "Railway Root Proxy for Monorepo Node.js Execution",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "install": "cd server && npm install",
+    "start": "cd server && npm start",
+    "build": "echo 'No build phase strictly required for the Node.js backend'"
+  }
+}
