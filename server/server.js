@@ -17,6 +17,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Health check route
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'TnP Attendance API is running' });
+});
+
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/attendance', attendanceRoutes);
@@ -41,7 +46,8 @@ const seedAdmin = async () => {
 };
 
 // Start the server immediately so Railway doesn't timeout
-app.listen(PORT, () => {
+// Bind to 0.0.0.0 explicitly for Railway container networking
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
 
