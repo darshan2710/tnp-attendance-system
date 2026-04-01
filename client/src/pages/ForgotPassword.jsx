@@ -27,7 +27,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/auth/forgot-password`, { email });
+      const res = await axios.post('https://tnp-attendance-system-production-5a81.up.railway.app/auth/forgot-password', { email });
       setSuccess(res.data.message || 'OTP sent to your email');
       setStep(2); // Move to OTP input view
     } catch (err) {
@@ -54,7 +54,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      await axios.post(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/auth/reset-password`, {
+      await axios.post('https://tnp-attendance-system-production-5a81.up.railway.app/auth/reset-password', {
         email,
         otp,
         newPassword

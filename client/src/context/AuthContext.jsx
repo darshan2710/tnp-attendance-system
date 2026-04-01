@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${https://tnp-attendance-system-production-5a81.up.railway.app/}/auth/login`, { email, password });
+      const response = await axios.post('https://tnp-attendance-system-production-5a81.up.railway.app/auth/login', { email, password });
       setUser(response.data);
       localStorage.setItem('userInfo', JSON.stringify(response.data));
       return response.data;
