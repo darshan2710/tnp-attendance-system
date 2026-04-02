@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -59,7 +58,7 @@ const Login = () => {
             />
           </div>
           
-          <div className="form-group" style={{ marginBottom: '12px' }}>
+          <div className="form-group" style={{ marginBottom: '24px' }}>
             <label>Password</label>
             <input 
               type="password" 
@@ -69,12 +68,6 @@ const Login = () => {
               placeholder="••••••••"
               required 
             />
-          </div>
-
-          <div style={{ textAlign: 'right', marginBottom: '24px' }}>
-            <Link to="/forgot-password" style={{ color: 'var(--accent-color)', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}>
-              Forgot Password?
-            </Link>
           </div>
 
           <button type="submit" className="btn" style={{ width: '100%' }}>

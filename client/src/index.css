@@ -70,6 +70,12 @@ body {
   transform: translateY(-1px);
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-secondary {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
@@ -152,6 +158,7 @@ body {
   color: var(--text-secondary);
   text-decoration: none;
   transition: 0.2s;
+  font-size: 14px;
 }
 .nav-item:hover, .nav-item.active {
   background: var(--surface-hover);
@@ -231,6 +238,210 @@ tbody tr:hover {
   cursor: pointer;
 }
 
+/* ============================================
+   ACCORDION / COLLAPSIBLE DATE GROUPS
+   ============================================ */
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.accordion-header:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.accordion-chevron {
+  transition: transform 0.25s ease;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.accordion-chevron.open {
+  transform: rotate(90deg);
+}
+
+.accordion-date {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.accordion-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  padding: 2px 10px;
+  border-radius: 100px;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-content.open {
+  max-height: 5000px;
+}
+
+/* ============================================
+   MARKED ATTENDANCES SECTION
+   ============================================ */
+
+.marked-section {
+  margin-top: 32px;
+}
+
+.marked-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.marked-section-header:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-color);
+}
+
+.marked-section-header.open {
+  border-radius: 12px 12px 0 0;
+  border-bottom-color: transparent;
+}
+
+.marked-section-content {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+.marked-section-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--accent-color);
+}
+
+.marked-badge {
+  font-size: 11px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-color);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-weight: 600;
+}
+
+/* ============================================
+   MODAL OVERLAY (Change Password)
+   ============================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 32px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.25s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.modal-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   ALERT MESSAGES
+   ============================================ */
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--success);
+}
+
+.alert-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--danger);
+}
+
+/* ============================================
+   LIGHT MODE OVERRIDES
+   ============================================ */
+
 body.light-mode {
   --bg-color: #f8fafc;
   --surface-color: #ffffff;
@@ -274,4 +485,33 @@ body.light-mode .btn-secondary {
 
 body.light-mode .btn-secondary:hover {
   background-color: #1d4ed8;
+}
+
+body.light-mode .accordion-header {
+  background: #f1f5f9;
+}
+
+body.light-mode .accordion-header:hover {
+  background: rgba(79, 70, 229, 0.06);
+}
+
+body.light-mode .modal-content {
+  background: #ffffff;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .modal-overlay {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+body.light-mode .marked-section-header {
+  background: #ffffff;
+}
+
+body.light-mode .marked-section-header:hover {
+  background: #f1f5f9;
+}
+
+body.light-mode .marked-section-content {
+  background: #ffffff;
 }

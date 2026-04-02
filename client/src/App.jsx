@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import ProfessorDashboard from './pages/ProfessorDashboard';
-import ForgotPassword from './pages/ForgotPassword';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { user } = useAuth();
@@ -18,7 +17,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} /> : <Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/admin" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute allowedRole="professor"><ProfessorDashboard /></ProtectedRoute>} />
     </Routes>

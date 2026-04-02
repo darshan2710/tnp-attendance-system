@@ -11,21 +11,31 @@ const fetchAttendanceData = async () => {
       skipEmptyLines: true
     });
     
-    const data = parsed.data.map(row => {
+    const records = [];
+
+    parsed.data.forEach(row => {
       const getVal = (keyName) => {
         const key = Object.keys(row).find(k => k.trim().toLowerCase() === keyName.toLowerCase());
         return key ? row[key].trim() : '';
       };
       
-      return {
-        date: getVal('Date'),
-        roll: getVal('Register No.') || getVal('Register No'),
-        name: getVal('Name') || getVal('Student Name'),
-        subject: getVal('Subjects') || getVal('Subject')
-      };
-    }).filter(row => row.date && row.roll && row.subject);
+      const date = getVal('Date');
+      const roll = getVal('Register No.') || getVal('Register No');
+      const name = getVal('Name') || getVal('Student Name');
+      const subjectRaw = getVal('Subjects') || getVal('Subject');
+      const reason = getVal('Reason');
+
+      if (!date || !roll || !subjectRaw) return;
+
+      // Handle comma-separated subjects: "ML, AVR" → two separate records
+      const subjects = subjectRaw.split(',').map(s => s.trim()).filter(s => s);
+
+      subjects.forEach(subject => {
+        records.push({ date, roll, name, subject, reason });
+      });
+    });
     
-    return data;
+    return records;
   } catch (error) {
     console.error('Error fetching Google Sheets data:', error.message);
     throw new Error('Could not fetch data from Google Sheets');

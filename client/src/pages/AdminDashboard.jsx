@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X } from 'lucide-react';
+import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound } from 'lucide-react';
+
+const API_BASE = 'https://tnp-attendance-system-production-5a81.up.railway.app';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -19,6 +21,24 @@ const AdminDashboard = () => {
   const [editingId, setEditingId] = useState(null);
   const [editSubjectsInput, setEditSubjectsInput] = useState('');
 
+  // Collapsible date groups state
+  const [expandedDate, setExpandedDate] = useState(null);
+
+  // Marked attendances state
+  const [showMarked, setShowMarked] = useState(false);
+  const [markedData, setMarkedData] = useState([]);
+  const [markedLoading, setMarkedLoading] = useState(false);
+  const [markedExpandedDate, setMarkedExpandedDate] = useState(null);
+
+  // Change password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'professors') fetchProfessors();
     if (activeTab === 'attendance') fetchAttendance();
@@ -27,7 +47,7 @@ const AdminDashboard = () => {
   const fetchProfessors = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('https://tnp-attendance-system-production-5a81.up.railway.app/admin/professors', {
+      const res = await axios.get(`${API_BASE}/admin/professors`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setProfessors(res.data);
@@ -42,7 +62,7 @@ const AdminDashboard = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('https://tnp-attendance-system-production-5a81.up.railway.app/attendance', {
+      const res = await axios.get(`${API_BASE}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setData(res.data);
@@ -53,6 +73,50 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchMarkedAttendances = async () => {
+    try {
+      setMarkedLoading(true);
+      const res = await axios.get(`${API_BASE}/attendance/marked`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setMarkedData(res.data);
+    } catch (error) {
+      console.error('Failed to fetch marked attendances', error);
+    } finally {
+      setMarkedLoading(false);
+    }
+  };
+
+  // Group data by date, sorted by roll within each group
+  const groupedData = useMemo(() => {
+    const groups = data.reduce((acc, current) => {
+      if (!acc[current.date]) acc[current.date] = [];
+      acc[current.date].push(current);
+      return acc;
+    }, {});
+    Object.keys(groups).forEach(date => {
+      groups[date].sort((a, b) => a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' }));
+    });
+    return groups;
+  }, [data]);
+
+  const datesList = Object.keys(groupedData);
+
+  // Group marked data by date
+  const groupedMarkedData = useMemo(() => {
+    const groups = markedData.reduce((acc, current) => {
+      if (!acc[current.date]) acc[current.date] = [];
+      acc[current.date].push(current);
+      return acc;
+    }, {});
+    Object.keys(groups).forEach(date => {
+      groups[date].sort((a, b) => a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' }));
+    });
+    return groups;
+  }, [markedData]);
+
+  const markedDatesList = Object.keys(groupedMarkedData);
+
   const handleAddProfessor = async (e) => {
     e.preventDefault();
     if (!newEmail.endsWith('@iiitsurat.ac.in')) {
@@ -60,7 +124,7 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await axios.post('https://tnp-attendance-system-production-5a81.up.railway.app/admin/add-professor', 
+      await axios.post(`${API_BASE}/admin/add-professor`, 
         { email: newEmail, password: newPassword, subject: newSubjects },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -74,7 +138,7 @@ const AdminDashboard = () => {
   const handleRemoveProfessor = async (id) => {
     if (!window.confirm('Are you sure you want to remove this professor?')) return;
     try {
-      await axios.delete(`https://tnp-attendance-system-production-5a81.up.railway.app/admin/remove-professor/${id}`, {
+      await axios.delete(`${API_BASE}/admin/remove-professor/${id}`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       await fetchProfessors();
@@ -95,7 +159,7 @@ const AdminDashboard = () => {
 
   const saveEditedSubjects = async (id) => {
     try {
-      await axios.put(`https://tnp-attendance-system-production-5a81.up.railway.app/admin/update-subjects/${id}`, 
+      await axios.put(`${API_BASE}/admin/update-subjects/${id}`, 
         { subject: editSubjectsInput },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -108,7 +172,7 @@ const AdminDashboard = () => {
 
   const handleExportCSV = () => {
     axios({
-      url: 'https://tnp-attendance-system-production-5a81.up.railway.app/attendance/download?format=csv',
+      url: `${API_BASE}/attendance/download?format=csv`,
       method: 'GET',
       responseType: 'blob',
       headers: { Authorization: `Bearer ${user.token}` }
@@ -137,6 +201,58 @@ const AdminDashboard = () => {
             alert('Download failed');
         }
     });
+  };
+
+  const handleToggleMarked = () => {
+    const next = !showMarked;
+    setShowMarked(next);
+    if (next && markedData.length === 0) {
+      fetchMarkedAttendances();
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPwd !== confirmPwd) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    if (newPwd.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await axios.post(`${API_BASE}/auth/change-password`,
+        { currentPassword, newPassword: newPwd },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setPasswordSuccess('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPwd('');
+      setConfirmPwd('');
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess('');
+      }, 1500);
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordError('');
+    setPasswordSuccess('');
+    setCurrentPassword('');
+    setNewPwd('');
+    setConfirmPwd('');
   };
 
   return (
@@ -169,6 +285,13 @@ const AdminDashboard = () => {
             Logged in as:<br/>
             <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{user.email}</span>
           </div>
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => setShowPasswordModal(true)} 
+            style={{ width: '100%', marginBottom: '8px' }}
+          >
+            <KeyRound size={16} /> Change Password
+          </button>
           <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
             <LogOut size={16} /> Logout
           </button>
@@ -196,6 +319,8 @@ const AdminDashboard = () => {
             <div className="table-container">
               {loading ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</div>
+              ) : datesList.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>No unprocessed attendance records found.</div>
               ) : (
                 <table>
                   <thead>
@@ -204,26 +329,105 @@ const AdminDashboard = () => {
                       <th>Register No</th>
                       <th>Student Name</th>
                       <th>Subject</th>
+                      <th>Reason</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.slice(0, 100).map((row, idx) => (
-                      <tr key={idx}>
-                        <td>{row.date}</td>
-                        <td style={{ fontWeight: '500' }}>{row.roll}</td>
-                        <td>{row.name}</td>
-                        <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
-                      </tr>
+                    {datesList.map(dateKey => (
+                      <React.Fragment key={dateKey}>
+                        <tr 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}
+                        >
+                          <td colSpan="5" style={{ padding: '14px 16px', background: 'var(--surface-hover)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <ChevronRight size={16} className={`accordion-chevron ${expandedDate === dateKey ? 'open' : ''}`} />
+                              <span className="accordion-date">{dateKey}</span>
+                              <span className="accordion-count">{groupedData[dateKey].length} record{groupedData[dateKey].length !== 1 ? 's' : ''}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
+                          <tr key={idx}>
+                            <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.date}</td>
+                            <td style={{ fontWeight: '500' }}>{row.roll}</td>
+                            <td>{row.name}</td>
+                            <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
+                            <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
                     ))}
-                    {data.length > 100 && (
-                      <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          And {data.length - 100} more rows...
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
+              )}
+            </div>
+
+            {/* Marked Attendances Section */}
+            <div className="marked-section">
+              <div 
+                className={`marked-section-header ${showMarked ? 'open' : ''}`}
+                onClick={handleToggleMarked}
+              >
+                <Archive size={18} style={{ color: 'var(--accent-color)' }} />
+                <span className="marked-section-title">Marked Attendances</span>
+                {markedData.length > 0 && (
+                  <span className="marked-badge">{markedData.length} record{markedData.length !== 1 ? 's' : ''}</span>
+                )}
+                <ChevronRight 
+                  size={16} 
+                  className={`accordion-chevron ${showMarked ? 'open' : ''}`}
+                  style={{ marginLeft: 'auto' }}
+                />
+              </div>
+
+              {showMarked && (
+                <div className="marked-section-content">
+                  {markedLoading ? (
+                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading marked records...</div>
+                  ) : markedDatesList.length === 0 ? (
+                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No marked attendance records found.</div>
+                  ) : (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Register No</th>
+                          <th>Student Name</th>
+                          <th>Subject</th>
+                          <th>Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {markedDatesList.map(dateKey => (
+                          <React.Fragment key={dateKey}>
+                            <tr 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => setMarkedExpandedDate(prev => prev === dateKey ? null : dateKey)}
+                            >
+                              <td colSpan="5" style={{ padding: '14px 16px', background: 'var(--surface-hover)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <ChevronRight size={16} className={`accordion-chevron ${markedExpandedDate === dateKey ? 'open' : ''}`} />
+                                  <span className="accordion-date">{dateKey}</span>
+                                  <span className="accordion-count">{groupedMarkedData[dateKey].length} record{groupedMarkedData[dateKey].length !== 1 ? 's' : ''}</span>
+                                </div>
+                              </td>
+                            </tr>
+                            {markedExpandedDate === dateKey && groupedMarkedData[dateKey].map((row, idx) => (
+                              <tr key={idx}>
+                                <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.date}</td>
+                                <td style={{ fontWeight: '500' }}>{row.roll}</td>
+                                <td>{row.name}</td>
+                                <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
+                                <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               )}
             </div>
           </>
@@ -360,6 +564,62 @@ const AdminDashboard = () => {
           </>
         )}
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={closePasswordModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Change Password</h3>
+              <button className="modal-close" onClick={closePasswordModal}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {passwordError && <div className="alert alert-error">{passwordError}</div>}
+            {passwordSuccess && <div className="alert alert-success">{passwordSuccess}</div>}
+
+            <form onSubmit={handleChangePassword}>
+              <div className="form-group">
+                <label>Current Password</label>
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>New Password</label>
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  value={newPwd}
+                  onChange={(e) => setNewPwd(e.target.value)}
+                  placeholder="••••••••"
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Confirm New Password</label>
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  placeholder="••••••••"
+                  required 
+                />
+              </div>
+              <button type="submit" className="btn" style={{ width: '100%' }} disabled={passwordLoading}>
+                <KeyRound size={16} /> {passwordLoading ? 'Changing...' : 'Change Password'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

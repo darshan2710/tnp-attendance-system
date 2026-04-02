@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Download, CheckCircle2, LogOut, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Download, CheckCircle2, LogOut, Sun, Moon, ChevronDown, ChevronRight, Archive, KeyRound, X } from 'lucide-react';
+
+const API_BASE = 'https://tnp-attendance-system-production-5a81.up.railway.app';
 
 const ProfessorDashboard = () => {
   const { user, logout } = useAuth();
@@ -11,6 +13,22 @@ const ProfessorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDates, setSelectedDates] = useState(new Set());
   const [processing, setProcessing] = useState(false);
+  const [expandedDate, setExpandedDate] = useState(null);
+
+  // Marked attendances state
+  const [showMarked, setShowMarked] = useState(false);
+  const [markedData, setMarkedData] = useState([]);
+  const [markedLoading, setMarkedLoading] = useState(false);
+  const [markedExpandedDate, setMarkedExpandedDate] = useState(null);
+
+  // Change password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Backward compatible safety fallback
   const availableSubjects = user.subjects || (user.subject ? [user.subject] : []);
@@ -27,7 +45,7 @@ const ProfessorDashboard = () => {
   const fetchData = async (subjectContext) => {
     try {
       setLoading(true);
-      const res = await axios.get('https://tnp-attendance-system-production-5a81.up.railway.app/attendance', {
+      const res = await axios.get(`${API_BASE}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` },
         params: { subject: subjectContext }
       });
@@ -41,15 +59,51 @@ const ProfessorDashboard = () => {
     }
   };
 
+  const fetchMarkedAttendances = async () => {
+    try {
+      setMarkedLoading(true);
+      const res = await axios.get(`${API_BASE}/attendance/marked`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        params: { subject: selectedSubject }
+      });
+      setMarkedData(res.data);
+    } catch (error) {
+      console.error('Failed to fetch marked attendances', error);
+    } finally {
+      setMarkedLoading(false);
+    }
+  };
+
+  // Group data by date, sorted by roll within each group
   const groupedData = useMemo(() => {
-    return data.reduce((acc, current) => {
+    const groups = data.reduce((acc, current) => {
       if (!acc[current.date]) acc[current.date] = [];
       acc[current.date].push(current);
       return acc;
     }, {});
+    // Sort each group by roll number
+    Object.keys(groups).forEach(date => {
+      groups[date].sort((a, b) => a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' }));
+    });
+    return groups;
   }, [data]);
 
   const datesList = Object.keys(groupedData);
+
+  // Group marked data by date
+  const groupedMarkedData = useMemo(() => {
+    const groups = markedData.reduce((acc, current) => {
+      if (!acc[current.date]) acc[current.date] = [];
+      acc[current.date].push(current);
+      return acc;
+    }, {});
+    Object.keys(groups).forEach(date => {
+      groups[date].sort((a, b) => a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' }));
+    });
+    return groups;
+  }, [markedData]);
+
+  const markedDatesList = Object.keys(groupedMarkedData);
 
   const handleSelectDate = (date) => {
     const newSelected = new Set(selectedDates);
@@ -58,17 +112,38 @@ const ProfessorDashboard = () => {
     setSelectedDates(newSelected);
   };
 
+  const handleToggleDate = (date) => {
+    setExpandedDate(prev => prev === date ? null : date);
+  };
+
   const handleMarkProcessed = async () => {
     if (selectedDates.size === 0) return;
     try {
       setProcessing(true);
-      await axios.post('https://tnp-attendance-system-production-5a81.up.railway.app/attendance/mark', 
-        { subject: selectedSubject, dates: Array.from(selectedDates) },
+      // Collect all granular records for selected dates
+      const records = [];
+      selectedDates.forEach(date => {
+        if (groupedData[date]) {
+          groupedData[date].forEach(row => {
+            records.push({
+              date: row.date,
+              subject: row.subject,
+              roll: row.roll,
+              name: row.name,
+              reason: row.reason || ''
+            });
+          });
+        }
+      });
+
+      await axios.post(`${API_BASE}/attendance/mark`, 
+        { records },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       
       alert('Marked as processed successfully');
       setSelectedDates(new Set());
+      setExpandedDate(null);
       await fetchData(selectedSubject);
     } catch (error) {
       console.error(error);
@@ -80,7 +155,7 @@ const ProfessorDashboard = () => {
 
   const handleExportCSV = () => {
     axios({
-      url: `https://tnp-attendance-system-production-5a81.up.railway.app/attendance/download?format=csv&subject=${selectedSubject}`,
+      url: `${API_BASE}/attendance/download?format=csv&subject=${selectedSubject}`,
       method: 'GET',
       responseType: 'blob',
       headers: { Authorization: `Bearer ${user.token}` }
@@ -111,6 +186,58 @@ const ProfessorDashboard = () => {
     });
   };
 
+  const handleToggleMarked = () => {
+    const next = !showMarked;
+    setShowMarked(next);
+    if (next && markedData.length === 0) {
+      fetchMarkedAttendances();
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await axios.post(`${API_BASE}/auth/change-password`,
+        { currentPassword, newPassword },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setPasswordSuccess('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess('');
+      }, 1500);
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordError('');
+    setPasswordSuccess('');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   return (
     <div className="dashboard-layout">
       <div className="sidebar">
@@ -130,6 +257,13 @@ const ProfessorDashboard = () => {
             Logged in as:<br/>
             <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{user.email}</span>
           </div>
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => setShowPasswordModal(true)} 
+            style={{ width: '100%', marginBottom: '8px' }}
+          >
+            <KeyRound size={16} /> Change Password
+          </button>
           <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
             <LogOut size={16} /> Logout
           </button>
@@ -190,6 +324,7 @@ const ProfessorDashboard = () => {
           </div>
         </div>
 
+        {/* Unprocessed attendance table with collapsible date groups */}
         <div className="table-container">
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -203,33 +338,45 @@ const ProfessorDashboard = () => {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: '40px' }}></th>
                   <th>Register No</th>
                   <th>Student Name</th>
                   <th>Subject</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody>
                 {datesList.map(dateKey => (
                   <React.Fragment key={dateKey}>
-                    <tr style={{ background: 'var(--surface-hover)' }}>
-                      <td colSpan="3" style={{ padding: '12px 16px' }}>
+                    <tr 
+                      className="accordion-header" 
+                      onClick={() => handleToggleDate(dateKey)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td style={{ padding: '14px 8px 14px 16px', borderBottom: '1px solid var(--border-color)' }}>
+                        <div className="checkbox-wrapper" onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedDates.has(dateKey)}
+                            onChange={() => handleSelectDate(dateKey)}
+                          />
+                        </div>
+                      </td>
+                      <td colSpan="4" style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div className="checkbox-wrapper">
-                            <input 
-                              type="checkbox" 
-                              checked={selectedDates.has(dateKey)}
-                              onChange={() => handleSelectDate(dateKey)}
-                            />
-                          </div>
-                          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{dateKey}</span>
+                          <ChevronRight size={16} className={`accordion-chevron ${expandedDate === dateKey ? 'open' : ''}`} />
+                          <span className="accordion-date">{dateKey}</span>
+                          <span className="accordion-count">{groupedData[dateKey].length} student{groupedData[dateKey].length !== 1 ? 's' : ''}</span>
                         </div>
                       </td>
                     </tr>
-                    {groupedData[dateKey].map((row, idx) => (
+                    {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
                       <tr key={idx}>
-                        <td style={{ fontWeight: '500', paddingLeft: '48px' }}>{row.roll}</td>
+                        <td></td>
+                        <td style={{ fontWeight: '500', paddingLeft: '16px' }}>{row.roll}</td>
                         <td>{row.name}</td>
-                        <td>{row.subject}</td>
+                        <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.reason || '—'}</td>
                       </tr>
                     ))}
                   </React.Fragment>
@@ -238,7 +385,129 @@ const ProfessorDashboard = () => {
             </table>
           )}
         </div>
+
+        {/* Marked Attendances Section */}
+        <div className="marked-section">
+          <div 
+            className={`marked-section-header ${showMarked ? 'open' : ''}`}
+            onClick={handleToggleMarked}
+          >
+            <Archive size={18} style={{ color: 'var(--accent-color)' }} />
+            <span className="marked-section-title">Marked Attendances</span>
+            {markedData.length > 0 && (
+              <span className="marked-badge">{markedData.length} record{markedData.length !== 1 ? 's' : ''}</span>
+            )}
+            <ChevronRight 
+              size={16} 
+              className={`accordion-chevron ${showMarked ? 'open' : ''}`}
+              style={{ marginLeft: 'auto' }}
+            />
+          </div>
+
+          {showMarked && (
+            <div className="marked-section-content">
+              {markedLoading ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading marked records...</div>
+              ) : markedDatesList.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No marked attendance records found.</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Register No</th>
+                      <th>Student Name</th>
+                      <th>Subject</th>
+                      <th>Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {markedDatesList.map(dateKey => (
+                      <React.Fragment key={dateKey}>
+                        <tr 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setMarkedExpandedDate(prev => prev === dateKey ? null : dateKey)}
+                        >
+                          <td colSpan="4" style={{ padding: '14px 16px', background: 'var(--surface-hover)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <ChevronRight size={16} className={`accordion-chevron ${markedExpandedDate === dateKey ? 'open' : ''}`} />
+                              <span className="accordion-date">{dateKey}</span>
+                              <span className="accordion-count">{groupedMarkedData[dateKey].length} record{groupedMarkedData[dateKey].length !== 1 ? 's' : ''}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {markedExpandedDate === dateKey && groupedMarkedData[dateKey].map((row, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontWeight: '500' }}>{row.roll}</td>
+                            <td>{row.name}</td>
+                            <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
+                            <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={closePasswordModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Change Password</h3>
+              <button className="modal-close" onClick={closePasswordModal}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {passwordError && <div className="alert alert-error">{passwordError}</div>}
+            {passwordSuccess && <div className="alert alert-success">{passwordSuccess}</div>}
+
+            <form onSubmit={handleChangePassword}>
+              <div className="form-group">
+                <label>Current Password</label>
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>New Password</label>
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Confirm New Password</label>
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required 
+                />
+              </div>
+              <button type="submit" className="btn" style={{ width: '100%' }} disabled={passwordLoading}>
+                <KeyRound size={16} /> {passwordLoading ? 'Changing...' : 'Change Password'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
