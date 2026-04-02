@@ -95,7 +95,7 @@ const AdminDashboard = () => {
       return acc;
     }, {});
     Object.keys(groups).forEach(date => {
-      groups[date].sort((a, b) => a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' }));
+      groups[date].sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
     });
     return groups;
   }, [data]);
@@ -110,7 +110,7 @@ const AdminDashboard = () => {
       return acc;
     }, {});
     Object.keys(groups).forEach(date => {
-      groups[date].sort((a, b) => a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' }));
+      groups[date].sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
     });
     return groups;
   }, [markedData]);
