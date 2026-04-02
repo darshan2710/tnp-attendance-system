@@ -1,10 +1,34 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet } from 'lucide-react';
+import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
 
 const API_BASE = 'https://tnp-attendance-system-production-5a81.up.railway.app';
+
+// ─── Toast Component ───
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: '24px', right: '24px', zIndex: 2000,
+      padding: '14px 22px', borderRadius: '12px',
+      display: 'flex', alignItems: 'center', gap: '10px',
+      fontSize: '13.5px', fontWeight: '600',
+      animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+      background: type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--accent-color)',
+      color: type === 'success' ? '#022c22' : 'white'
+    }}>
+      {type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+      {message}
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -20,14 +44,19 @@ const AdminDashboard = () => {
 
   const [editingId, setEditingId] = useState(null);
   const [editSubjectsInput, setEditSubjectsInput] = useState('');
-
-  // Collapsible date groups
   const [expandedDate, setExpandedDate] = useState(null);
 
   // Marked attendances
   const [showMarked, setShowMarked] = useState(false);
   const [markedData, setMarkedData] = useState([]);
   const [markedLoading, setMarkedLoading] = useState(false);
+  const [markedExpandedDate, setMarkedExpandedDate] = useState(null);
+
+  // Toast
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+  }, []);
 
   // Change password modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -52,7 +81,7 @@ const AdminDashboard = () => {
       setProfessors(res.data);
     } catch (error) {
       console.error(error);
-      alert('Failed to fetch professors');
+      showToast('Failed to fetch professors', 'error');
     } finally {
       setLoading(false);
     }
@@ -81,6 +110,7 @@ const AdminDashboard = () => {
       setMarkedData(res.data);
     } catch (error) {
       console.error('Failed to fetch marked attendances', error);
+      showToast('Failed to load marked records', 'error');
     } finally {
       setMarkedLoading(false);
     }
@@ -88,28 +118,38 @@ const AdminDashboard = () => {
 
   // Group data by date, sorted by roll
   const groupedData = useMemo(() => {
-    const groups = data.reduce((acc, current) => {
-      if (!acc[current.date]) acc[current.date] = [];
-      acc[current.date].push(current);
-      return acc;
-    }, {});
-    Object.keys(groups).forEach(date => {
-      groups[date].sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
+    const groups = {};
+    data.forEach(row => {
+      if (!groups[row.date]) groups[row.date] = [];
+      groups[row.date].push(row);
+    });
+    Object.values(groups).forEach(arr => {
+      arr.sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
     });
     return groups;
   }, [data]);
 
   const datesList = Object.keys(groupedData);
 
-  // Sort marked data by roll
-  const sortedMarkedData = useMemo(() => {
-    return [...markedData].sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
+  // Group marked data by date
+  const groupedMarkedData = useMemo(() => {
+    const groups = {};
+    markedData.forEach(row => {
+      if (!groups[row.date]) groups[row.date] = [];
+      groups[row.date].push(row);
+    });
+    Object.values(groups).forEach(arr => {
+      arr.sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
+    });
+    return groups;
   }, [markedData]);
+
+  const markedDatesList = Object.keys(groupedMarkedData);
 
   const handleAddProfessor = async (e) => {
     e.preventDefault();
     if (!newEmail.endsWith('@iiitsurat.ac.in')) {
-      alert('Must use @iiitsurat.ac.in email');
+      showToast('Must use @iiitsurat.ac.in email', 'error');
       return;
     }
     try {
@@ -119,8 +159,9 @@ const AdminDashboard = () => {
       );
       setNewEmail(''); setNewPassword(''); setNewSubjects('');
       await fetchProfessors();
+      showToast('Professor added successfully');
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to add professor');
+      showToast(error.response?.data?.message || 'Failed to add professor', 'error');
     }
   };
 
@@ -131,8 +172,9 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       await fetchProfessors();
+      showToast('Professor removed');
     } catch (error) {
-      alert('Failed to remove professor');
+      showToast('Failed to remove professor', 'error');
     }
   };
 
@@ -154,8 +196,9 @@ const AdminDashboard = () => {
       );
       setEditingId(null);
       await fetchProfessors();
+      showToast('Subjects updated');
     } catch (error) {
-      alert('Failed to update subjects');
+      showToast('Failed to update subjects', 'error');
     }
   };
 
@@ -182,12 +225,12 @@ const AdminDashboard = () => {
        link.setAttribute('download', filename);
        document.body.appendChild(link);
        link.click();
+       showToast('CSV downloaded successfully');
     }).catch((error) => {
         if (error.response?.status === 404) {
-            alert('No data available to download');
+            showToast('No data available to download', 'error');
         } else {
-            console.error(error);
-            alert('Download failed');
+            showToast('Download failed', 'error');
         }
     });
   };
@@ -195,24 +238,15 @@ const AdminDashboard = () => {
   const handleToggleMarked = () => {
     const next = !showMarked;
     setShowMarked(next);
-    if (next) {
-      fetchMarkedAttendances();
-    }
+    if (next) fetchMarkedAttendances();
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
+    setPasswordError(''); setPasswordSuccess('');
 
-    if (newPwd !== confirmPwd) {
-      setPasswordError('Passwords do not match');
-      return;
-    }
-    if (newPwd.length < 6) {
-      setPasswordError('New password must be at least 6 characters');
-      return;
-    }
+    if (newPwd !== confirmPwd) { setPasswordError('Passwords do not match'); return; }
+    if (newPwd.length < 6) { setPasswordError('New password must be at least 6 characters'); return; }
 
     try {
       setPasswordLoading(true);
@@ -221,13 +255,8 @@ const AdminDashboard = () => {
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       setPasswordSuccess('Password changed successfully!');
-      setCurrentPassword('');
-      setNewPwd('');
-      setConfirmPwd('');
-      setTimeout(() => {
-        setShowPasswordModal(false);
-        setPasswordSuccess('');
-      }, 1500);
+      setCurrentPassword(''); setNewPwd(''); setConfirmPwd('');
+      setTimeout(() => { setShowPasswordModal(false); setPasswordSuccess(''); }, 1500);
     } catch (error) {
       setPasswordError(error.response?.data?.message || 'Failed to change password');
     } finally {
@@ -237,11 +266,8 @@ const AdminDashboard = () => {
 
   const closePasswordModal = () => {
     setShowPasswordModal(false);
-    setPasswordError('');
-    setPasswordSuccess('');
-    setCurrentPassword('');
-    setNewPwd('');
-    setConfirmPwd('');
+    setPasswordError(''); setPasswordSuccess('');
+    setCurrentPassword(''); setNewPwd(''); setConfirmPwd('');
   };
 
   return (
@@ -254,18 +280,14 @@ const AdminDashboard = () => {
         </div>
         
         <div className="nav-links">
-          <button 
-            className={`nav-item ${activeTab === 'attendance' ? 'active' : ''}`}
+          <button className={`nav-item ${activeTab === 'attendance' ? 'active' : ''}`}
             onClick={() => setActiveTab('attendance')}
-            style={{ width: '100%', border: 'none', textAlign: 'left' }}
-          >
+            style={{ width: '100%', border: 'none', textAlign: 'left' }}>
             <CheckCircle2 size={17} /> Global Logs
           </button>
-          <button 
-            className={`nav-item ${activeTab === 'professors' ? 'active' : ''}`}
+          <button className={`nav-item ${activeTab === 'professors' ? 'active' : ''}`}
             onClick={() => setActiveTab('professors')}
-            style={{ width: '100%', border: 'none', textAlign: 'left' }}
-          >
+            style={{ width: '100%', border: 'none', textAlign: 'left' }}>
             <Users size={17} /> Professors
           </button>
         </div>
@@ -332,10 +354,8 @@ const AdminDashboard = () => {
                     <tbody>
                       {datesList.map(dateKey => (
                         <React.Fragment key={dateKey}>
-                          <tr 
-                            className="accordion-header-row"
-                            onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}
-                          >
+                          <tr className="accordion-header-row"
+                            onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}>
                             <td colSpan="5">
                               <div className="accordion-inner">
                                 <ChevronRight size={15} className={`accordion-chevron ${expandedDate === dateKey ? 'open' : ''}`} />
@@ -347,7 +367,7 @@ const AdminDashboard = () => {
                             </td>
                           </tr>
                           {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
-                            <tr key={`${dateKey}-${idx}`}>
+                            <tr key={`${dateKey}-${row.roll}-${idx}`}>
                               <td style={{ color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap' }}>{row.date}</td>
                               <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll}</td>
                               <td>{row.name}</td>
@@ -363,22 +383,17 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Marked Attendances */}
+            {/* Marked Attendances — 2 Level Accordion */}
             <div className="marked-section">
-              <div 
-                className={`marked-section-header ${showMarked ? 'open' : ''}`}
-                onClick={handleToggleMarked}
-              >
+              <div className={`marked-section-header ${showMarked ? 'open' : ''}`}
+                onClick={handleToggleMarked}>
                 <Archive size={17} style={{ color: 'var(--accent-color)' }} />
                 <span className="marked-section-title">Marked Attendances</span>
                 {markedData.length > 0 && (
-                  <span className="marked-badge">{markedData.length}</span>
+                  <span className="marked-badge">{markedData.length} record{markedData.length !== 1 ? 's' : ''}</span>
                 )}
-                <ChevronRight 
-                  size={15} 
-                  className={`accordion-chevron ${showMarked ? 'open' : ''}`}
-                  style={{ marginLeft: 'auto' }}
-                />
+                <ChevronRight size={15} className={`accordion-chevron ${showMarked ? 'open' : ''}`}
+                  style={{ marginLeft: 'auto' }} />
               </div>
 
               {showMarked && (
@@ -388,36 +403,65 @@ const AdminDashboard = () => {
                       <div className="spinner"></div>
                       <span className="loading-text">Loading marked records...</span>
                     </div>
-                  ) : sortedMarkedData.length === 0 ? (
+                  ) : markedDatesList.length === 0 ? (
                     <div className="empty-state">
                       <FileSpreadsheet size={36} className="empty-state-icon" />
                       <div className="empty-state-title">No marked records</div>
                       <div className="empty-state-desc">Records marked as processed will appear here.</div>
                     </div>
                   ) : (
-                    <div className="table-scroll">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Register No</th>
-                            <th>Student Name</th>
-                            <th>Subject</th>
-                            <th>Reason</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedMarkedData.map((row, idx) => (
-                            <tr key={row._id || idx}>
-                              <td style={{ color: 'var(--text-secondary)', fontSize: '13px', whiteSpace: 'nowrap' }}>{row.date}</td>
-                              <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll}</td>
-                              <td>{row.name || '—'}</td>
-                              <td><span className="chip">{row.subject}</span></td>
-                              <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div style={{ padding: '4px 0' }}>
+                      {markedDatesList.map(dateKey => {
+                        // Collect unique subjects for this date
+                        const subjects = [...new Set(groupedMarkedData[dateKey].map(r => r.subject))].join(', ');
+                        return (
+                          <div key={dateKey}>
+                            <div
+                              onClick={() => setMarkedExpandedDate(prev => prev === dateKey ? null : dateKey)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '12px',
+                                padding: '12px 18px', cursor: 'pointer',
+                                borderBottom: '1px solid var(--border-subtle)',
+                                transition: 'background 0.15s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <ChevronRight size={14} className={`accordion-chevron ${markedExpandedDate === dateKey ? 'open' : ''}`} />
+                              <span style={{ fontSize: '13px', fontWeight: '600' }}>📅 {dateKey}</span>
+                              <span className="chip" style={{ fontSize: '10.5px', padding: '2px 8px' }}>{subjects}</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                                {groupedMarkedData[dateKey].length} student{groupedMarkedData[dateKey].length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+
+                            {markedExpandedDate === dateKey && (
+                              <div style={{ background: 'var(--row-stripe)' }}>
+                                <table>
+                                  <thead>
+                                    <tr>
+                                      <th>Register No</th>
+                                      <th>Student Name</th>
+                                      <th>Subject</th>
+                                      <th>Reason</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {groupedMarkedData[dateKey].map((row, idx) => (
+                                      <tr key={row._id || `${dateKey}-${idx}`}>
+                                        <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll || '—'}</td>
+                                        <td>{row.name || '—'}</td>
+                                        <td><span className="chip">{row.subject}</span></td>
+                                        <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -465,15 +509,9 @@ const AdminDashboard = () => {
                             <td>
                               {editingId === prof._id ? (
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                  <input 
-                                    type="text" 
-                                    className="input-field" 
-                                    style={{ padding: '7px 12px', fontSize: '13px' }}
-                                    value={editSubjectsInput}
-                                    onChange={(e) => setEditSubjectsInput(e.target.value)}
-                                    placeholder="ML, AVR, OS"
-                                    autoFocus
-                                  />
+                                  <input type="text" className="input-field" style={{ padding: '7px 12px', fontSize: '13px' }}
+                                    value={editSubjectsInput} onChange={(e) => setEditSubjectsInput(e.target.value)}
+                                    placeholder="ML, AVR, OS" autoFocus />
                                   <button className="btn btn-small" onClick={() => saveEditedSubjects(prof._id)} style={{ padding: '7px' }}>
                                     <Check size={14} />
                                   </button>
@@ -484,9 +522,7 @@ const AdminDashboard = () => {
                               ) : (
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                   {prof.subjects && prof.subjects.length > 0 ? (
-                                    prof.subjects.map((sub, i) => (
-                                      <span key={i} className="chip">{sub}</span>
-                                    ))
+                                    prof.subjects.map((sub, i) => <span key={i} className="chip">{sub}</span>)
                                   ) : (
                                     <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>None</span>
                                   )}
@@ -525,7 +561,7 @@ const AdminDashboard = () => {
               </div>
 
               <div className="glass-card" style={{ flex: 1, padding: '28px', maxWidth: '380px' }}>
-                <h3 style={{ marginBottom: '20px', fontSize: '16px', fontWeight: '700', letterSpacing: '-0.01em' }}>Add New Professor</h3>
+                <h3 style={{ marginBottom: '20px', fontSize: '16px', fontWeight: '700' }}>Add New Professor</h3>
                 <form onSubmit={handleAddProfessor}>
                   <div className="form-group">
                     <label>Email Address</label>
@@ -558,14 +594,10 @@ const AdminDashboard = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Change Password</h3>
-              <button className="modal-close" onClick={closePasswordModal}>
-                <X size={18} />
-              </button>
+              <button className="modal-close" onClick={closePasswordModal}><X size={18} /></button>
             </div>
-
             {passwordError && <div className="alert alert-error">{passwordError}</div>}
             {passwordSuccess && <div className="alert alert-success">{passwordSuccess}</div>}
-
             <form onSubmit={handleChangePassword}>
               <div className="form-group">
                 <label>Current Password</label>
@@ -589,6 +621,9 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* ─── Toast ─── */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 };

@@ -8,12 +8,12 @@ const router = express.Router();
 
 router.use(protect);
 
-// Helper: sort by roll number (natural/numeric sort)
+// Helper: sort by roll number
 const sortByRoll = (a, b) => {
-  return a.roll.localeCompare(b.roll, undefined, { numeric: true, sensitivity: 'base' });
+  return (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' });
 };
 
-// GET /attendance — returns unprocessed records (granular per-record filtering)
+// GET /attendance — returns unprocessed records
 router.get('/', async (req, res) => {
   try {
     const userRole = req.user.role;
@@ -36,14 +36,12 @@ router.get('/', async (req, res) => {
       filteredData = allData.filter(row => row.subject.toLowerCase() === subjectFilter.toLowerCase());
     }
 
-    // Granular filtering: check each individual record against ProcessedAttendance
     let processedRecordsQuery = {};
     if (subjectFilter) {
       processedRecordsQuery.subject = new RegExp('^' + subjectFilter + '$', 'i');
     }
     const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
 
-    // Build set with granular key: date_subject_roll
     const processedSet = new Set(processedRecords.map(pr => `${pr.date}_${pr.subject}_${pr.roll}`.toLowerCase()));
 
     const unprocessedData = filteredData.filter(row => {
@@ -51,11 +49,10 @@ router.get('/', async (req, res) => {
       return !processedSet.has(id);
     });
 
-    // Sort by roll number
     unprocessedData.sort(sortByRoll);
-
     res.json(unprocessedData);
   } catch (error) {
+    console.error('GET /attendance error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -67,7 +64,8 @@ router.post('/mark', async (req, res) => {
     if (!records || !Array.isArray(records) || records.length === 0) {
       return res.status(400).json({ message: 'Invalid input: records array required' });
     }
-    
+
+    // Validate each record has required fields
     const documents = records.map(r => ({
       date: r.date,
       subject: r.subject,
@@ -75,19 +73,53 @@ router.post('/mark', async (req, res) => {
       name: r.name || '',
       reason: r.reason || ''
     }));
+
+    const invalidDocs = documents.filter(d => !d.date || !d.subject || !d.roll);
+    if (invalidDocs.length > 0) {
+      return res.status(400).json({ 
+        message: `Invalid records: ${invalidDocs.length} record(s) missing required fields (date, subject, roll)`,
+        invalidCount: invalidDocs.length
+      });
+    }
     
+    let insertedCount = 0;
+    let duplicateCount = 0;
+
     try {
-      await ProcessedAttendance.insertMany(documents, { ordered: false });
+      const result = await ProcessedAttendance.insertMany(documents, { ordered: false });
+      insertedCount = result.length;
     } catch (insertError) {
-      // Ignore duplicate key errors (code 11000) — records already processed
-      if (insertError.code !== 11000 && !(insertError.writeErrors && insertError.writeErrors.every(e => e.err?.code === 11000))) {
-        console.error('Insert error details:', insertError);
+      // Handle bulk write errors (some succeed, some are duplicates)
+      if (insertError.insertedDocs) {
+        insertedCount = insertError.insertedDocs.length;
+      }
+      if (insertError.writeErrors) {
+        duplicateCount = insertError.writeErrors.filter(e => e.err?.code === 11000 || e.code === 11000).length;
+        const otherErrors = insertError.writeErrors.filter(e => e.err?.code !== 11000 && e.code !== 11000);
+        if (otherErrors.length > 0) {
+          console.error('Non-duplicate insert errors:', otherErrors);
+          return res.status(500).json({ 
+            message: `Partial failure: ${otherErrors.length} record(s) failed to save`,
+            insertedCount,
+            errorCount: otherErrors.length
+          });
+        }
+      } else if (insertError.code !== 11000) {
+        console.error('Insert error:', insertError);
+        return res.status(500).json({ message: 'Failed to save records: ' + insertError.message });
       }
     }
 
-    res.json({ message: 'Marked as processed successfully' });
+    // Return the successfully marked records so frontend can use them
+    res.json({ 
+      message: 'Marked as processed successfully',
+      insertedCount,
+      duplicateCount,
+      records: documents
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('POST /attendance/mark error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
 
@@ -114,6 +146,7 @@ router.get('/marked', async (req, res) => {
 
     res.json(markedRecords);
   } catch (error) {
+    console.error('GET /attendance/marked error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -142,7 +175,6 @@ const getUnprocessedData = async (req) => {
   }
   const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
 
-  // Granular filtering
   const processedSet = new Set(processedRecords.map(pr => `${pr.date}_${pr.subject}_${pr.roll}`.toLowerCase()));
 
   const unprocessedData = filteredData.filter(row => {
@@ -150,16 +182,12 @@ const getUnprocessedData = async (req) => {
     return !processedSet.has(id);
   });
 
-  // Sort by roll number
   unprocessedData.sort(sortByRoll);
 
-  return {
-    subjectFilter,
-    data: unprocessedData
-  };
+  return { subjectFilter, data: unprocessedData };
 };
 
-// GET /attendance/download — CSV export of unprocessed data
+// GET /attendance/download
 router.get('/download', async (req, res) => {
   try {
     const { subjectFilter, data: unprocessedData } = await getUnprocessedData(req);
