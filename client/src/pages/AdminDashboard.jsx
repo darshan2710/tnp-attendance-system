@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound } from 'lucide-react';
+import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet } from 'lucide-react';
 
 const API_BASE = 'https://tnp-attendance-system-production-5a81.up.railway.app';
 
@@ -21,16 +21,15 @@ const AdminDashboard = () => {
   const [editingId, setEditingId] = useState(null);
   const [editSubjectsInput, setEditSubjectsInput] = useState('');
 
-  // Collapsible date groups state
+  // Collapsible date groups
   const [expandedDate, setExpandedDate] = useState(null);
 
-  // Marked attendances state
+  // Marked attendances
   const [showMarked, setShowMarked] = useState(false);
   const [markedData, setMarkedData] = useState([]);
   const [markedLoading, setMarkedLoading] = useState(false);
-  const [markedExpandedDate, setMarkedExpandedDate] = useState(null);
 
-  // Change password modal state
+  // Change password modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPwd, setNewPwd] = useState('');
@@ -87,7 +86,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // Group data by date, sorted by roll within each group
+  // Group data by date, sorted by roll
   const groupedData = useMemo(() => {
     const groups = data.reduce((acc, current) => {
       if (!acc[current.date]) acc[current.date] = [];
@@ -102,20 +101,10 @@ const AdminDashboard = () => {
 
   const datesList = Object.keys(groupedData);
 
-  // Group marked data by date
-  const groupedMarkedData = useMemo(() => {
-    const groups = markedData.reduce((acc, current) => {
-      if (!acc[current.date]) acc[current.date] = [];
-      acc[current.date].push(current);
-      return acc;
-    }, {});
-    Object.keys(groups).forEach(date => {
-      groups[date].sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
-    });
-    return groups;
+  // Sort marked data by roll
+  const sortedMarkedData = useMemo(() => {
+    return [...markedData].sort((a, b) => (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' }));
   }, [markedData]);
-
-  const markedDatesList = Object.keys(groupedMarkedData);
 
   const handleAddProfessor = async (e) => {
     e.preventDefault();
@@ -206,7 +195,7 @@ const AdminDashboard = () => {
   const handleToggleMarked = () => {
     const next = !showMarked;
     setShowMarked(next);
-    if (next && markedData.length === 0) {
+    if (next) {
       fetchMarkedAttendances();
     }
   };
@@ -257,125 +246,136 @@ const AdminDashboard = () => {
 
   return (
     <div className="dashboard-layout">
+      {/* ─── Sidebar ─── */}
       <div className="sidebar">
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>T&P Portal</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Admin Dashboard</p>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>T&P Portal</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>Admin Dashboard</p>
         </div>
         
         <div className="nav-links">
           <button 
             className={`nav-item ${activeTab === 'attendance' ? 'active' : ''}`}
             onClick={() => setActiveTab('attendance')}
-            style={{ width: '100%', border: 'none', background: activeTab === 'attendance' ? 'var(--surface-hover)' : 'transparent', textAlign: 'left', cursor: 'pointer' }}
+            style={{ width: '100%', border: 'none', textAlign: 'left' }}
           >
-            <CheckCircle2 size={18} /> Global Logs
+            <CheckCircle2 size={17} /> Global Logs
           </button>
           <button 
             className={`nav-item ${activeTab === 'professors' ? 'active' : ''}`}
             onClick={() => setActiveTab('professors')}
-            style={{ width: '100%', border: 'none', background: activeTab === 'professors' ? 'var(--surface-hover)' : 'transparent', textAlign: 'left', cursor: 'pointer' }}
+            style={{ width: '100%', border: 'none', textAlign: 'left' }}
           >
-            <Users size={18} /> Professors
+            <Users size={17} /> Professors
           </button>
         </div>
 
-        <div style={{ marginTop: 'auto' }}>
-          <div style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Logged in as:<br/>
-            <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{user.email}</span>
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+            Logged in as
+            <div style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '13px', marginTop: '2px', wordBreak: 'break-all' }}>{user.email}</div>
           </div>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => setShowPasswordModal(true)} 
-            style={{ width: '100%', marginBottom: '8px' }}
-          >
-            <KeyRound size={16} /> Change Password
+          <button className="btn btn-secondary" onClick={() => setShowPasswordModal(true)} style={{ width: '100%', fontSize: '13px' }}>
+            <KeyRound size={15} /> Change Password
           </button>
-          <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
-            <LogOut size={16} /> Logout
+          <button className="btn btn-secondary" onClick={logout} style={{ width: '100%', fontSize: '13px' }}>
+            <LogOut size={15} /> Logout
           </button>
         </div>
       </div>
 
+      {/* ─── Main Content ─── */}
       <div className="main-content">
+
+        {/* ━━━ ATTENDANCE TAB ━━━ */}
         {activeTab === 'attendance' && (
           <>
             <div className="header">
               <div>
-                <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>Global Unprocessed Logs</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>All master sheet records pending processing</p>
+                <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px', letterSpacing: '-0.02em' }}>Global Unprocessed Logs</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>All master sheet records pending processing</p>
               </div>
-              <div className="actions-bar" style={{ margin: 0 }}>
-                <button className="btn" onClick={handleExportCSV} style={{ background: 'var(--success)', color: 'white' }}>
-                  <Download size={16} /> Download CSV
+              <div className="actions-bar">
+                <button className="btn btn-success" onClick={handleExportCSV}>
+                  <Download size={15} /> Download CSV
                 </button>
-                <button className="btn btn-secondary" onClick={toggleTheme} style={{ padding: '8px' }}>
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                <button className="btn btn-icon" onClick={toggleTheme}>
+                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
               </div>
             </div>
 
-            <div className="table-container">
-              {loading ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</div>
-              ) : datesList.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>No unprocessed attendance records found.</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Register No</th>
-                      <th>Student Name</th>
-                      <th>Subject</th>
-                      <th>Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {datesList.map(dateKey => (
-                      <React.Fragment key={dateKey}>
-                        <tr 
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}
-                        >
-                          <td colSpan="5" style={{ padding: '14px 16px', background: 'var(--surface-hover)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <ChevronRight size={16} className={`accordion-chevron ${expandedDate === dateKey ? 'open' : ''}`} />
-                              <span className="accordion-date">{dateKey}</span>
-                              <span className="accordion-count">{groupedData[dateKey].length} record{groupedData[dateKey].length !== 1 ? 's' : ''}</span>
-                            </div>
-                          </td>
-                        </tr>
-                        {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
-                          <tr key={idx}>
-                            <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.date}</td>
-                            <td style={{ fontWeight: '500' }}>{row.roll}</td>
-                            <td>{row.name}</td>
-                            <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
-                            <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.reason || '—'}</td>
+            <div className="table-card">
+              <div className="table-scroll">
+                {loading ? (
+                  <div className="loading-container">
+                    <div className="spinner"></div>
+                    <span className="loading-text">Fetching attendance data...</span>
+                  </div>
+                ) : datesList.length === 0 ? (
+                  <div className="empty-state">
+                    <Inbox size={44} className="empty-state-icon" />
+                    <div className="empty-state-title">No unprocessed records</div>
+                    <div className="empty-state-desc">All attendance records have been processed or no data is available yet.</div>
+                  </div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Register No</th>
+                        <th>Student Name</th>
+                        <th>Subject</th>
+                        <th>Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {datesList.map(dateKey => (
+                        <React.Fragment key={dateKey}>
+                          <tr 
+                            className="accordion-header-row"
+                            onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}
+                          >
+                            <td colSpan="5">
+                              <div className="accordion-inner">
+                                <ChevronRight size={15} className={`accordion-chevron ${expandedDate === dateKey ? 'open' : ''}`} />
+                                <span className="accordion-date">{dateKey}</span>
+                                <span className="accordion-count">
+                                  {groupedData[dateKey].length} record{groupedData[dateKey].length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </td>
                           </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                          {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
+                            <tr key={`${dateKey}-${idx}`}>
+                              <td style={{ color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap' }}>{row.date}</td>
+                              <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll}</td>
+                              <td>{row.name}</td>
+                              <td><span className="chip">{row.subject}</span></td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
 
-            {/* Marked Attendances Section */}
+            {/* Marked Attendances */}
             <div className="marked-section">
               <div 
                 className={`marked-section-header ${showMarked ? 'open' : ''}`}
                 onClick={handleToggleMarked}
               >
-                <Archive size={18} style={{ color: 'var(--accent-color)' }} />
+                <Archive size={17} style={{ color: 'var(--accent-color)' }} />
                 <span className="marked-section-title">Marked Attendances</span>
                 {markedData.length > 0 && (
-                  <span className="marked-badge">{markedData.length} record{markedData.length !== 1 ? 's' : ''}</span>
+                  <span className="marked-badge">{markedData.length}</span>
                 )}
                 <ChevronRight 
-                  size={16} 
+                  size={15} 
                   className={`accordion-chevron ${showMarked ? 'open' : ''}`}
                   style={{ marginLeft: 'auto' }}
                 />
@@ -384,48 +384,41 @@ const AdminDashboard = () => {
               {showMarked && (
                 <div className="marked-section-content">
                   {markedLoading ? (
-                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading marked records...</div>
-                  ) : markedDatesList.length === 0 ? (
-                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No marked attendance records found.</div>
+                    <div className="loading-container">
+                      <div className="spinner"></div>
+                      <span className="loading-text">Loading marked records...</span>
+                    </div>
+                  ) : sortedMarkedData.length === 0 ? (
+                    <div className="empty-state">
+                      <FileSpreadsheet size={36} className="empty-state-icon" />
+                      <div className="empty-state-title">No marked records</div>
+                      <div className="empty-state-desc">Records marked as processed will appear here.</div>
+                    </div>
                   ) : (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Register No</th>
-                          <th>Student Name</th>
-                          <th>Subject</th>
-                          <th>Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {markedDatesList.map(dateKey => (
-                          <React.Fragment key={dateKey}>
-                            <tr 
-                              style={{ cursor: 'pointer' }}
-                              onClick={() => setMarkedExpandedDate(prev => prev === dateKey ? null : dateKey)}
-                            >
-                              <td colSpan="5" style={{ padding: '14px 16px', background: 'var(--surface-hover)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <ChevronRight size={16} className={`accordion-chevron ${markedExpandedDate === dateKey ? 'open' : ''}`} />
-                                  <span className="accordion-date">{dateKey}</span>
-                                  <span className="accordion-count">{groupedMarkedData[dateKey].length} record{groupedMarkedData[dateKey].length !== 1 ? 's' : ''}</span>
-                                </div>
-                              </td>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Register No</th>
+                            <th>Student Name</th>
+                            <th>Subject</th>
+                            <th>Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedMarkedData.map((row, idx) => (
+                            <tr key={row._id || idx}>
+                              <td style={{ color: 'var(--text-secondary)', fontSize: '13px', whiteSpace: 'nowrap' }}>{row.date}</td>
+                              <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll}</td>
+                              <td>{row.name || '—'}</td>
+                              <td><span className="chip">{row.subject}</span></td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
                             </tr>
-                            {markedExpandedDate === dateKey && groupedMarkedData[dateKey].map((row, idx) => (
-                              <tr key={idx}>
-                                <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.date}</td>
-                                <td style={{ fontWeight: '500' }}>{row.roll}</td>
-                                <td>{row.name}</td>
-                                <td><div className="chip" style={{ display: 'inline-block' }}>{row.subject}</div></td>
-                                <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{row.reason || '—'}</td>
-                              </tr>
-                            ))}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               )}
@@ -433,130 +426,124 @@ const AdminDashboard = () => {
           </>
         )}
 
+        {/* ━━━ PROFESSORS TAB ━━━ */}
         {activeTab === 'professors' && (
           <>
             <div className="header">
               <div>
-                <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>Manage Professors</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>Add or update multi-subject assignments</p>
+                <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px', letterSpacing: '-0.02em' }}>Manage Professors</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Add or update multi-subject assignments</p>
               </div>
-              <div className="actions-bar" style={{ margin: 0 }}>
-                <button className="btn btn-secondary" onClick={toggleTheme} style={{ padding: '8px' }}>
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              <div className="actions-bar">
+                <button className="btn btn-icon" onClick={toggleTheme}>
+                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
-              <div className="table-container" style={{ flex: 2 }}>
-                {loading ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</div>
-                ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Assigned Subjects</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {professors.map((prof) => (
-                        <tr key={prof._id}>
-                          <td>{prof.email}</td>
-                          <td>
-                            {editingId === prof._id ? (
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <input 
-                                  type="text" 
-                                  className="input-field" 
-                                  style={{ padding: '6px 10px', fontSize: '13px' }}
-                                  value={editSubjectsInput}
-                                  onChange={(e) => setEditSubjectsInput(e.target.value)}
-                                  placeholder="ML, AVR, OS"
-                                  autoFocus
-                                />
-                                <button className="btn btn-small" onClick={() => saveEditedSubjects(prof._id)} style={{ padding: '6px' }}>
-                                  <Check size={14} />
-                                </button>
-                                <button className="btn btn-secondary btn-small" onClick={cancelEditing} style={{ padding: '6px' }}>
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                {prof.subjects && prof.subjects.length > 0 ? (
-                                  prof.subjects.map((sub, i) => (
-                                    <div key={i} className="chip" style={{ margin: 0 }}>{sub}</div>
-                                  ))
-                                ) : (
-                                  <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>None</span>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ display: 'flex', gap: '8px' }}>
-                            {editingId !== prof._id && (
-                              <button className="btn btn-secondary btn-small" onClick={() => startEditing(prof)}>
-                                <Edit2 size={16} /> Edit
-                              </button>
-                            )}
-                            <button className="btn btn-danger btn-small" onClick={() => handleRemoveProfessor(prof._id)}>
-                              <Trash2 size={16} /> Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {professors.length === 0 && (
+            <div style={{ display: 'flex', gap: '28px', alignItems: 'flex-start' }}>
+              <div className="table-card" style={{ flex: 2 }}>
+                <div className="table-scroll">
+                  {loading ? (
+                    <div className="loading-container">
+                      <div className="spinner"></div>
+                      <span className="loading-text">Loading professors...</span>
+                    </div>
+                  ) : (
+                    <table>
+                      <thead>
                         <tr>
-                          <td colSpan="3" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                            No professors added yet.
-                          </td>
+                          <th>Email</th>
+                          <th>Assigned Subjects</th>
+                          <th>Actions</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
+                      </thead>
+                      <tbody>
+                        {professors.map((prof) => (
+                          <tr key={prof._id}>
+                            <td style={{ fontSize: '13px' }}>{prof.email}</td>
+                            <td>
+                              {editingId === prof._id ? (
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                  <input 
+                                    type="text" 
+                                    className="input-field" 
+                                    style={{ padding: '7px 12px', fontSize: '13px' }}
+                                    value={editSubjectsInput}
+                                    onChange={(e) => setEditSubjectsInput(e.target.value)}
+                                    placeholder="ML, AVR, OS"
+                                    autoFocus
+                                  />
+                                  <button className="btn btn-small" onClick={() => saveEditedSubjects(prof._id)} style={{ padding: '7px' }}>
+                                    <Check size={14} />
+                                  </button>
+                                  <button className="btn btn-secondary btn-small" onClick={cancelEditing} style={{ padding: '7px' }}>
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  {prof.subjects && prof.subjects.length > 0 ? (
+                                    prof.subjects.map((sub, i) => (
+                                      <span key={i} className="chip">{sub}</span>
+                                    ))
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>None</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                {editingId !== prof._id && (
+                                  <button className="btn btn-secondary btn-small" onClick={() => startEditing(prof)}>
+                                    <Edit2 size={14} /> Edit
+                                  </button>
+                                )}
+                                <button className="btn btn-danger btn-small" onClick={() => handleRemoveProfessor(prof._id)}>
+                                  <Trash2 size={14} /> Remove
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {professors.length === 0 && (
+                          <tr>
+                            <td colSpan="3">
+                              <div className="empty-state">
+                                <Users size={36} className="empty-state-icon" />
+                                <div className="empty-state-title">No professors added</div>
+                                <div className="empty-state-desc">Use the form to add your first professor.</div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
 
-              <div className="glass-card" style={{ flex: 1, padding: '24px' }}>
-                <h3 style={{ marginBottom: '20px', fontSize: '18px' }}>Add New Professor</h3>
+              <div className="glass-card" style={{ flex: 1, padding: '28px', maxWidth: '380px' }}>
+                <h3 style={{ marginBottom: '20px', fontSize: '16px', fontWeight: '700', letterSpacing: '-0.01em' }}>Add New Professor</h3>
                 <form onSubmit={handleAddProfessor}>
                   <div className="form-group">
                     <label>Email Address</label>
-                    <input 
-                      type="email" 
-                      className="input-field" 
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="@iiitsurat.ac.in"
-                      required 
-                    />
+                    <input type="email" className="input-field" value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)} placeholder="name@iiitsurat.ac.in" required />
                   </div>
                   <div className="form-group">
                     <label>Password</label>
-                    <input 
-                      type="text" 
-                      className="input-field" 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Temporary Password"
-                      required 
-                    />
+                    <input type="text" className="input-field" value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)} placeholder="Temporary password" required />
                   </div>
                   <div className="form-group">
-                    <label>Assigned Subjects (comma-separated)</label>
-                    <input 
-                      type="text" 
-                      className="input-field" 
-                      value={newSubjects}
-                      onChange={(e) => setNewSubjects(e.target.value)}
-                      placeholder="e.g. AVR, ML, OS"
-                      required 
-                    />
+                    <label>Subjects (comma-separated)</label>
+                    <input type="text" className="input-field" value={newSubjects}
+                      onChange={(e) => setNewSubjects(e.target.value)} placeholder="e.g. AVR, ML, OS" required />
                   </div>
-                  <button type="submit" className="btn" style={{ width: '100%', marginTop: '8px' }}>
-                    <Plus size={16} /> Add Professor
+                  <button type="submit" className="btn" style={{ width: '100%', marginTop: '4px' }}>
+                    <Plus size={15} /> Add Professor
                   </button>
                 </form>
               </div>
@@ -565,14 +552,14 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* Change Password Modal */}
+      {/* ─── Change Password Modal ─── */}
       {showPasswordModal && (
         <div className="modal-overlay" onClick={closePasswordModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Change Password</h3>
               <button className="modal-close" onClick={closePasswordModal}>
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -582,39 +569,21 @@ const AdminDashboard = () => {
             <form onSubmit={handleChangePassword}>
               <div className="form-group">
                 <label>Current Password</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required 
-                />
+                <input type="password" className="input-field" value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" required />
               </div>
               <div className="form-group">
                 <label>New Password</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  value={newPwd}
-                  onChange={(e) => setNewPwd(e.target.value)}
-                  placeholder="••••••••"
-                  required 
-                />
+                <input type="password" className="input-field" value={newPwd}
+                  onChange={(e) => setNewPwd(e.target.value)} placeholder="••••••••" required />
               </div>
               <div className="form-group">
                 <label>Confirm New Password</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  value={confirmPwd}
-                  onChange={(e) => setConfirmPwd(e.target.value)}
-                  placeholder="••••••••"
-                  required 
-                />
+                <input type="password" className="input-field" value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)} placeholder="••••••••" required />
               </div>
               <button type="submit" className="btn" style={{ width: '100%' }} disabled={passwordLoading}>
-                <KeyRound size={16} /> {passwordLoading ? 'Changing...' : 'Change Password'}
+                <KeyRound size={15} /> {passwordLoading ? 'Changing...' : 'Change Password'}
               </button>
             </form>
           </div>
