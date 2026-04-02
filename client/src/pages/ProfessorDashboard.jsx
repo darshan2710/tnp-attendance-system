@@ -478,7 +478,7 @@ const ProfessorDashboard = () => {
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
                         <ChevronRight size={14} className={`accordion-chevron ${markedExpandedDate === dateKey ? 'open' : ''}`} />
-                        <span style={{ fontSize: '13px', fontWeight: '600' }}>📅 {dateKey}</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600' }}>{dateKey}</span>
                         <span className="chip" style={{ fontSize: '10.5px', padding: '2px 8px' }}>
                           {groupedMarkedData[dateKey][0]?.subject || selectedSubject}
                         </span>
