@@ -8,8 +8,31 @@ const router = express.Router();
 
 router.use(protect);
 
-// Helper: sort by roll number
-const sortByRoll = (a, b) => {
+// Helper: parse date strings like "22-Apr-26" or "22-Apr-2026" into real Date objects
+const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+const parseDate = (dateStr) => {
+  if (!dateStr) return new Date(0);
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const monthStr = parts[1].toLowerCase().slice(0, 3);
+    const month = MONTHS[monthStr];
+    let year = parseInt(parts[2], 10);
+    if (year < 100) year += 2000;
+    
+    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+      return new Date(year, month, day);
+    }
+  }
+  const parsed = new Date(dateStr);
+  return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+};
+
+// Helper: sort by date ascending, then roll ascending
+const sortByDateAscThenRoll = (a, b) => {
+  const da = parseDate(a.date);
+  const db = parseDate(b.date);
+  if (da.getTime() !== db.getTime()) return da.getTime() - db.getTime();
   return (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' });
 };
 
@@ -49,7 +72,7 @@ router.get('/', async (req, res) => {
       return !processedSet.has(id);
     });
 
-    unprocessedData.sort(sortByRoll);
+    unprocessedData.sort(sortByDateAscThenRoll);
     res.json(unprocessedData);
   } catch (error) {
     console.error('GET /attendance error:', error);
@@ -140,9 +163,14 @@ router.get('/marked', async (req, res) => {
       query.subject = new RegExp('^' + subjectFilter + '$', 'i');
     }
 
-    const markedRecords = await ProcessedAttendance.find(query)
-      .sort({ date: -1, roll: 1 })
-      .lean();
+    const markedRecords = await ProcessedAttendance.find(query).lean();
+
+    markedRecords.sort((a, b) => {
+      const da = parseDate(a.date);
+      const db = parseDate(b.date);
+      if (da.getTime() !== db.getTime()) return db.getTime() - da.getTime();
+      return (a.roll || '').localeCompare(b.roll || '', undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     res.json(markedRecords);
   } catch (error) {
@@ -182,7 +210,7 @@ const getUnprocessedData = async (req) => {
     return !processedSet.has(id);
   });
 
-  unprocessedData.sort(sortByRoll);
+  unprocessedData.sort(sortByDateAscThenRoll);
 
   return { subjectFilter, data: unprocessedData };
 };

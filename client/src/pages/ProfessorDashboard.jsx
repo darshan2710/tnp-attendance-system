@@ -6,6 +6,24 @@ import { Download, CheckCircle2, LogOut, Sun, Moon, ChevronDown, ChevronRight, A
 
 const API_BASE = 'https://tnp-attendance-system-production-5a81.up.railway.app';
 
+const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+const parseDate = (dateStr) => {
+  if (!dateStr) return new Date(0);
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const monthStr = parts[1].toLowerCase().slice(0, 3);
+    const month = MONTHS[monthStr];
+    let year = parseInt(parts[2], 10);
+    if (year < 100) year += 2000;
+    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+      return new Date(year, month, day);
+    }
+  }
+  const parsed = new Date(dateStr);
+  return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+};
+
 // ─── Toast Component ───
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -118,7 +136,9 @@ const ProfessorDashboard = () => {
     return groups;
   }, [data]);
 
-  const datesList = Object.keys(groupedData);
+  const datesList = useMemo(() => {
+    return Object.keys(groupedData).sort((a, b) => parseDate(a).getTime() - parseDate(b).getTime());
+  }, [groupedData]);
 
   // Group marked data by date for 2-level display
   const groupedMarkedData = useMemo(() => {
@@ -133,7 +153,9 @@ const ProfessorDashboard = () => {
     return groups;
   }, [markedData]);
 
-  const markedDatesList = Object.keys(groupedMarkedData);
+  const markedDatesList = useMemo(() => {
+    return Object.keys(groupedMarkedData).sort((a, b) => parseDate(b).getTime() - parseDate(a).getTime());
+  }, [groupedMarkedData]);
 
   const handleSelectDate = (date) => {
     const newSelected = new Set(selectedDates);
