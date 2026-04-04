@@ -84,10 +84,13 @@ const ProfessorDashboard = () => {
   useEffect(() => {
     if (selectedSubject) {
       fetchData(selectedSubject);
+      if (showMarked) {
+        fetchMarkedAttendances(selectedSubject);
+      }
     } else {
       setLoading(false);
     }
-  }, [selectedSubject]);
+  }, [selectedSubject, showMarked]);
 
   const fetchData = async (subjectContext) => {
     try {
@@ -107,12 +110,12 @@ const ProfessorDashboard = () => {
     }
   };
 
-  const fetchMarkedAttendances = async () => {
+  const fetchMarkedAttendances = async (subjectCtx = selectedSubject) => {
     try {
       setMarkedLoading(true);
       const res = await axios.get(`${API_BASE}/attendance/marked`, {
         headers: { Authorization: `Bearer ${user.token}` },
-        params: { subject: selectedSubject }
+        params: { subject: subjectCtx }
       });
       setMarkedData(res.data);
     } catch (error) {
@@ -266,9 +269,7 @@ const ProfessorDashboard = () => {
   };
 
   const handleToggleMarked = () => {
-    const next = !showMarked;
-    setShowMarked(next);
-    if (next) fetchMarkedAttendances();
+    setShowMarked(!showMarked);
   };
 
   const handleChangePassword = async (e) => {
@@ -312,7 +313,7 @@ const ProfessorDashboard = () => {
       {/* ─── Sidebar ─── */}
       <div className="sidebar">
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>T&P Portal</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>T&P Attendance Tracker</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>Professor Panel</p>
         </div>
         
@@ -347,19 +348,22 @@ const ProfessorDashboard = () => {
                 <select 
                   className="input-field" 
                   style={{ 
-                    padding: '8px 38px 8px 16px', borderRadius: '100px', fontSize: '13px', fontWeight: '600',
-                    color: 'var(--accent-color)', background: 'var(--surface-color)', 
-                    border: '1px solid var(--border-color)', cursor: 'pointer', appearance: 'none', outline: 'none', width: 'auto'
+                    padding: '10px 42px 10px 18px', borderRadius: '12px', fontSize: '14px', fontWeight: '600',
+                    color: 'var(--text-primary)', background: 'var(--surface-color)', 
+                    border: '1px solid var(--border-color)', cursor: 'pointer', appearance: 'none', outline: 'none', width: 'auto',
+                    transition: 'border-color 0.2s ease'
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-color)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)' }}
                   value={selectedSubject}
                   onChange={(e) => setSelectedSubject(e.target.value)}
                 >
                   {availableSubjects.map((sub, i) => (
-                    <option key={i} value={sub}>{sub}</option>
+                    <option key={i} value={sub} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>{sub}</option>
                   ))}
                 </select>
                 <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }}>
-                  <ChevronDown size={14} />
+                  <ChevronDown size={15} strokeWidth={2} />
                 </div>
               </div>
             ) : (
@@ -408,7 +412,7 @@ const ProfessorDashboard = () => {
                 <thead>
                   <tr>
                     <th style={{ width: '44px' }}></th>
-                    <th>Register No</th>
+                    <th>Registration Number</th>
                     <th>Student Name</th>
                     <th>Subject</th>
                     <th>Reason</th>
@@ -515,7 +519,7 @@ const ProfessorDashboard = () => {
                           <table>
                             <thead>
                               <tr>
-                                <th>Register No</th>
+                                <th>Registration Number</th>
                                 <th>Student Name</th>
                                 <th>Subject</th>
                                 <th>Reason</th>

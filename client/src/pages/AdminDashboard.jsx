@@ -297,7 +297,7 @@ const AdminDashboard = () => {
       {/* ─── Sidebar ─── */}
       <div className="sidebar">
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>T&P Portal</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>T&P Attendance Tracker</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>Admin Dashboard</p>
         </div>
         
@@ -367,7 +367,7 @@ const AdminDashboard = () => {
                     <thead>
                       <tr>
                         <th>Date</th>
-                        <th>Register No</th>
+                        <th>Registration Number</th>
                         <th>Student Name</th>
                         <th>Subject</th>
                         <th>Reason</th>
@@ -462,7 +462,7 @@ const AdminDashboard = () => {
                                 <table>
                                   <thead>
                                     <tr>
-                                      <th>Register No</th>
+                                      <th>Registration Number</th>
                                       <th>Student Name</th>
                                       <th>Subject</th>
                                       <th>Reason</th>

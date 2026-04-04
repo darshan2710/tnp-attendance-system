@@ -27,7 +27,7 @@ const Login = () => {
     <div className="auth-container">
       <div className="glass-card">
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>T&P Cell Portal</h2>
+          <h2 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>T&P Attendance Tracker</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Sign in to manage attendance</p>
         </div>
 
