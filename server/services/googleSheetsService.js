@@ -20,7 +20,7 @@ const fetchAttendanceData = async () => {
       };
       
       const date = getVal('Date');
-      const roll = getVal('Register No.') || getVal('Register No');
+      const roll = getVal('Registration No.') || getVal('Registration No');
       const name = getVal('Name') || getVal('Student Name');
       const subjectRaw = getVal('Subjects') || getVal('Subject');
       const reason = getVal('Reason');
