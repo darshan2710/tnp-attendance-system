@@ -19,7 +19,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('https://tnp-attendance-system-production-5a81.up.railway.app/auth/login', { email, password });
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await axios.post(`${API_BASE}/auth/login`, { email, password });
       setUser(response.data);
       localStorage.setItem('userInfo', JSON.stringify(response.data));
       return response.data;
