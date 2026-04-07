@@ -96,11 +96,10 @@ To run this project locally, you will need Node.js and a running MongoDB instanc
     npm install
     ```
 3.  **Update API Endpoint**:
-    The client-side code contains a hardcoded API URL for the production backend. For local development, you must change this to point to your local server.
-    Search for `https://tnp-attendance-system-production-5a81.up.railway.app` in the following files and replace it with `http://localhost:5000`:
-    -   `client/src/context/AuthContext.jsx`
-    -   `client/src/pages/AdminDashboard.jsx`
-    -   `client/src/pages/ProfessorDashboard.jsx`
+    Create a `.env` file in the `client` directory to point to your local backend server during development:
+    ```env
+    VITE_API_URL=http://localhost:5000
+    ```
 
 4.  **Start the client**:
     ```bash

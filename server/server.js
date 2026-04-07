@@ -40,7 +40,7 @@ app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/attendance', attendanceRoutes);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/tnp-attendance';
 
 const seedAdmin = async () => {
@@ -64,7 +64,7 @@ const ensureCorrectIndexes = async () => {
   try {
     const collection = mongoose.connection.collection('processedattendances');
     const indexes = await collection.indexes();
-    
+
     // Check for old index {date:1, subject:1} without roll
     const hasOldIndex = indexes.some(idx => {
       const keys = Object.keys(idx.key);
