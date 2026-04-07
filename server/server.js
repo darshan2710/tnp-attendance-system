@@ -13,8 +13,21 @@ const ProcessedAttendance = require('./models/ProcessedAttendance');
 
 const app = express();
 
+const allowedOrigins = [
+  "https://iiitsurat-tnp-attendance.netlify.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
 app.use(cors({
-  origin: "https://iiitsurat-tnp-attendance.netlify.app"
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
 }));
 app.use(express.json());
 
