@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      if (API_BASE.endsWith('/')) API_BASE = API_BASE.slice(0, -1);
       if (API_BASE && !API_BASE.startsWith('http')) API_BASE = `https://${API_BASE}`;
       const response = await axios.post(`${API_BASE}/auth/login`, { email, password });
       setUser(response.data);
