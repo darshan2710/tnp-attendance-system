@@ -3,7 +3,8 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+if (API_BASE && !API_BASE.startsWith('http')) API_BASE = `https://${API_BASE}`;
 const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
 const parseDate = (dateStr) => {
   if (!dateStr) return new Date(0);
