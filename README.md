@@ -40,8 +40,8 @@ This is a full-stack web application designed for the Training and Placement (T&
     -   **HTTP Client**: Axios
     -   **UI**: Custom CSS with light/dark themes, `lucide-react` for icons.
 -   **Deployment**:
-    -   The backend is deployed on Railway.
-    -   The frontend is deployed on Netlify.
+    -   The backend is deployed on Render.
+    -   The frontend is deployed on Vercel.
 
 ## Architecture Overview
 

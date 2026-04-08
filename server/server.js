@@ -14,7 +14,6 @@ const ProcessedAttendance = require('./models/ProcessedAttendance');
 const app = express();
 
 const allowedOrigins = [
-  "https://iiitsurat-tnp-attendance.netlify.app",
   "http://localhost:5173",
   "http://localhost:3000"
 ];
