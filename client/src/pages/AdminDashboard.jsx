@@ -390,11 +390,11 @@ const AdminDashboard = () => {
                           </tr>
                           {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
                             <tr key={`${dateKey}-${row.roll}-${idx}`}>
-                              <td style={{ color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap' }}>{row.date}</td>
-                              <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll}</td>
+                              <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{row.date}</td>
+                              <td style={{ fontWeight: '600' }}>{row.roll}</td>
                               <td>{row.name}</td>
                               <td><span className="chip">{row.subject}</span></td>
-                              <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                              <td style={{ color: 'var(--text-secondary)' }}>{row.reason || '—'}</td>
                             </tr>
                           ))}
                         </React.Fragment>
@@ -471,10 +471,10 @@ const AdminDashboard = () => {
                                   <tbody>
                                     {groupedMarkedData[dateKey].map((row, idx) => (
                                       <tr key={row._id || `${dateKey}-${idx}`}>
-                                        <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll || '—'}</td>
+                                        <td style={{ fontWeight: '600' }}>{row.roll || '—'}</td>
                                         <td>{row.name || '—'}</td>
                                         <td><span className="chip">{row.subject}</span></td>
-                                        <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>{row.reason || '—'}</td>
                                       </tr>
                                     ))}
                                   </tbody>

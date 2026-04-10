@@ -9,7 +9,6 @@ const authRoutes = require('./routes/authRoute');
 const adminRoutes = require('./routes/adminRoute');
 const attendanceRoutes = require('./routes/attendanceRoute');
 const User = require('./models/User');
-const ProcessedAttendance = require('./models/ProcessedAttendance');
 
 const app = express();
 

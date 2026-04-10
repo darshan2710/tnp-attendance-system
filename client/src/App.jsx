@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import ProfessorDashboard from './pages/ProfessorDashboard';
@@ -22,8 +23,6 @@ function AppRoutes() {
     </Routes>
   );
 }
-
-import { ThemeProvider } from './context/ThemeContext';
 
 function App() {
   return (

@@ -412,6 +412,7 @@ const ProfessorDashboard = () => {
                 <thead>
                   <tr>
                     <th style={{ width: '44px' }}></th>
+                    <th>Date</th>
                     <th>Registration Number</th>
                     <th>Student Name</th>
                     <th>Subject</th>
@@ -422,7 +423,7 @@ const ProfessorDashboard = () => {
                   {datesList.map(dateKey => (
                     <React.Fragment key={dateKey}>
                       <tr className="accordion-header-row" onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}>
-                        <td colSpan="5">
+                        <td colSpan="6">
                           <div className="accordion-inner">
                             <div className="checkbox-wrapper" onClick={(e) => e.stopPropagation()}>
                               <input 
@@ -442,10 +443,11 @@ const ProfessorDashboard = () => {
                       {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
                         <tr key={`${dateKey}-${row.roll}-${idx}`}>
                           <td></td>
-                          <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll}</td>
+                          <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{row.date}</td>
+                          <td style={{ fontWeight: '600' }}>{row.roll}</td>
                           <td>{row.name}</td>
                           <td><span className="chip">{row.subject}</span></td>
-                          <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                          <td style={{ color: 'var(--text-secondary)' }}>{row.reason || '—'}</td>
                         </tr>
                       ))}
                     </React.Fragment>
@@ -528,10 +530,10 @@ const ProfessorDashboard = () => {
                             <tbody>
                               {groupedMarkedData[dateKey].map((row, idx) => (
                                 <tr key={row._id || `${dateKey}-${idx}`}>
-                                  <td style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '13px' }}>{row.roll || '—'}</td>
+                                  <td style={{ fontWeight: '600' }}>{row.roll || '—'}</td>
                                   <td>{row.name || '—'}</td>
                                   <td><span className="chip">{row.subject}</span></td>
-                                  <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{row.reason || '—'}</td>
+                                  <td style={{ color: 'var(--text-secondary)' }}>{row.reason || '—'}</td>
                                 </tr>
                               ))}
                             </tbody>

@@ -297,14 +297,6 @@ body {
   overflow: hidden;
 }
 
-.table-container {
-  background: var(--surface-elevated);
-  border-radius: var(--card-radius);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-}
-
 .table-scroll {
   overflow-x: auto;
 }
