@@ -34,6 +34,46 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'TnP Attendance API is running' });
 });
 
+// Diagnostic endpoint to check MongoDB state (temporary - for debugging)
+app.get('/debug/db-status', async (req, res) => {
+  try {
+    const readyState = mongoose.connection.readyState;
+    const stateNames = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    
+    const result = {
+      mongoState: stateNames[readyState] || `unknown(${readyState})`,
+      dbName: mongoose.connection.db?.databaseName || 'N/A',
+    };
+
+    if (readyState === 1) {
+      try {
+        const ProcessedAttendance = require('./models/ProcessedAttendance');
+        const count = await ProcessedAttendance.countDocuments();
+        result.processedAttendanceCount = count;
+        
+        const recent = await ProcessedAttendance.find({}).sort({ createdAt: -1 }).limit(5).lean();
+        result.recentRecords = recent.map(r => ({
+          date: r.date,
+          subject: r.subject,
+          roll: r.roll,
+          name: r.name,
+          createdAt: r.createdAt
+        }));
+
+        const col = mongoose.connection.collection('processedattendances');
+        const indexes = await col.indexes();
+        result.indexes = indexes.map(i => ({ name: i.name, key: i.key, unique: !!i.unique }));
+      } catch (dbErr) {
+        result.dbQueryError = dbErr.message;
+      }
+    }
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/attendance', attendanceRoutes);
