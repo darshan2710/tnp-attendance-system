@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.use(protect);
 
-// Helper: escape special regex characters in a string so it can be used as a literal match
+// Helper: escape special regex characters in strings used as regex patterns
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Helper: parse date strings like "22-Apr-26" or "22-Apr-2026" into real Date objects

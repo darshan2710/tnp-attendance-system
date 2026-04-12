@@ -34,7 +34,7 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'TnP Attendance API is running' });
 });
 
-// Diagnostic endpoint to check MongoDB state (temporary - for debugging)
+// Diagnostic endpoint to check MongoDB state
 app.get('/debug/db-status', async (req, res) => {
   try {
     const readyState = mongoose.connection.readyState;
@@ -48,62 +48,15 @@ app.get('/debug/db-status', async (req, res) => {
     if (readyState === 1) {
       try {
         const ProcessedAttendance = require('./models/ProcessedAttendance');
-        const { fetchAttendanceData } = require('./services/googleSheetsService');
-
         const count = await ProcessedAttendance.countDocuments();
         result.processedAttendanceCount = count;
         
-        const allProcessed = await ProcessedAttendance.find({}).lean();
-        result.processedRecords = allProcessed.map(r => ({
-          date: r.date,
-          subject: r.subject,
-          roll: r.roll,
-          name: r.name,
-          key: `${(r.date || '').trim()}_${(r.subject || '').trim()}_${(r.roll || '').trim()}`.toLowerCase(),
-          createdAt: r.createdAt
+        const recent = await ProcessedAttendance.find({}).sort({ createdAt: -1 }).limit(5).lean();
+        result.recentRecords = recent.map(r => ({
+          date: r.date, subject: r.subject, roll: r.roll, name: r.name, createdAt: r.createdAt
         }));
-
-        // Simulate the GET /attendance comparison
-        const sheetData = await fetchAttendanceData();
-        result.sheetRecordCount = sheetData.length;
-        result.sheetRecords = sheetData.map(r => ({
-          date: r.date,
-          subject: r.subject,
-          roll: r.roll,
-          key: `${(r.date || '').trim()}_${(r.subject || '').trim()}_${(r.roll || '').trim()}`.toLowerCase()
-        }));
-
-        // Show comparison result
-        const processedSet = new Set(allProcessed.map(pr => 
-          `${(pr.date || '').trim()}_${(pr.subject || '').trim()}_${(pr.roll || '').trim()}`.toLowerCase()
-        ));
-        
-        const unprocessed = sheetData.filter(row => {
-          const id = `${(row.date || '').trim()}_${(row.subject || '').trim()}_${(row.roll || '').trim()}`.toLowerCase();
-          return !processedSet.has(id);
-        });
-        
-        result.unprocessedCount = unprocessed.length;
-        result.unprocessedRecords = unprocessed.map(r => ({
-          date: r.date, subject: r.subject, roll: r.roll,
-          key: `${(r.date || '').trim()}_${(r.subject || '').trim()}_${(r.roll || '').trim()}`.toLowerCase()
-        }));
-        
-        result.comparison = {
-          processedKeys: [...processedSet],
-          sheetKeys: sheetData.map(r => `${(r.date || '').trim()}_${(r.subject || '').trim()}_${(r.roll || '').trim()}`.toLowerCase()),
-          matchResults: sheetData.map(r => {
-            const key = `${(r.date || '').trim()}_${(r.subject || '').trim()}_${(r.roll || '').trim()}`.toLowerCase();
-            return { key, isProcessed: processedSet.has(key) };
-          })
-        };
-
-        const col = mongoose.connection.collection('processedattendances');
-        const indexes = await col.indexes();
-        result.indexes = indexes.map(i => ({ name: i.name, key: i.key, unique: !!i.unique }));
       } catch (dbErr) {
         result.dbQueryError = dbErr.message;
-        result.dbQueryStack = dbErr.stack;
       }
     }
 
