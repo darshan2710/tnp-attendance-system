@@ -57,22 +57,21 @@ const seedAdmin = async () => {
   }
 };
 
-// Fix stale indexes on ProcessedAttendance collection
+// Safely fix stale indexes on ProcessedAttendance collection
+// Only drops the specific old index, NOT the entire collection
 const ensureCorrectIndexes = async () => {
   try {
     const collection = mongoose.connection.collection('processedattendances');
     const indexes = await collection.indexes();
 
     // Check for old index {date:1, subject:1} without roll
-    const hasOldIndex = indexes.some(idx => {
+    for (const idx of indexes) {
       const keys = Object.keys(idx.key);
-      return keys.length === 2 && idx.key.date && idx.key.subject && !idx.key.roll && idx.unique;
-    });
-
-    if (hasOldIndex) {
-      console.log('Detected old ProcessedAttendance index {date, subject}. Dropping collection to rebuild with {date, subject, roll}...');
-      await collection.drop();
-      console.log('Old collection dropped. New index will be created automatically.');
+      if (keys.length === 2 && idx.key.date && idx.key.subject && !idx.key.roll && idx.unique) {
+        console.log(`Dropping stale index "${idx.name}" {date, subject}...`);
+        await collection.dropIndex(idx.name);
+        console.log('Stale index dropped. Correct index {date, subject, roll} will be ensured by Mongoose.');
+      }
     }
   } catch (err) {
     // Collection might not exist yet — that's fine

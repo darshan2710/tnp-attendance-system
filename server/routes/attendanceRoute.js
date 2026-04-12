@@ -61,16 +61,22 @@ router.get('/', async (req, res) => {
 
     let processedRecordsQuery = {};
     if (subjectFilter) {
-      processedRecordsQuery.subject = new RegExp('^' + subjectFilter + '$', 'i');
+      processedRecordsQuery.subject = new RegExp('^' + subjectFilter.trim() + '$', 'i');
     }
     const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
 
-    const processedSet = new Set(processedRecords.map(pr => `${pr.date}_${pr.subject}_${pr.roll}`.toLowerCase()));
+    console.log(`[GET /attendance] Sheet records: ${filteredData.length}, Processed in DB: ${processedRecords.length}`);
+
+    const processedSet = new Set(processedRecords.map(pr => 
+      `${(pr.date || '').trim()}_${(pr.subject || '').trim()}_${(pr.roll || '').trim()}`.toLowerCase()
+    ));
 
     const unprocessedData = filteredData.filter(row => {
-      const id = `${row.date}_${row.subject}_${row.roll}`.toLowerCase();
+      const id = `${(row.date || '').trim()}_${(row.subject || '').trim()}_${(row.roll || '').trim()}`.toLowerCase();
       return !processedSet.has(id);
     });
+
+    console.log(`[GET /attendance] Unprocessed after filtering: ${unprocessedData.length}`);
 
     unprocessedData.sort(sortByDateAscThenRoll);
     res.json(unprocessedData);
@@ -90,11 +96,11 @@ router.post('/mark', async (req, res) => {
 
     // Validate each record has required fields
     const documents = records.map(r => ({
-      date: r.date,
-      subject: r.subject,
-      roll: r.roll,
-      name: r.name || '',
-      reason: r.reason || ''
+      date: (r.date || '').trim(),
+      subject: (r.subject || '').trim(),
+      roll: (r.roll || '').trim(),
+      name: (r.name || '').trim(),
+      reason: (r.reason || '').trim()
     }));
 
     const invalidDocs = documents.filter(d => !d.date || !d.subject || !d.roll);
@@ -105,32 +111,50 @@ router.post('/mark', async (req, res) => {
       });
     }
     
+    console.log(`[MARK] Attempting to insert ${documents.length} record(s):`, 
+      documents.map(d => `${d.date}|${d.subject}|${d.roll}`).join(', '));
+
     let insertedCount = 0;
     let duplicateCount = 0;
 
     try {
       const result = await ProcessedAttendance.insertMany(documents, { ordered: false });
       insertedCount = result.length;
+      console.log(`[MARK] Successfully inserted ${insertedCount} record(s)`);
     } catch (insertError) {
-      // Handle bulk write errors (some succeed, some are duplicates)
-      if (insertError.insertedDocs) {
+      // Handle bulk write errors (Mongoose 9.x compatible)
+      // In Mongoose 9.x, BulkWriteError has different properties than older versions
+      
+      // Count successfully inserted documents
+      if (insertError.insertedCount !== undefined) {
+        insertedCount = insertError.insertedCount;
+      } else if (insertError.result?.nInserted !== undefined) {
+        insertedCount = insertError.result.nInserted;
+      } else if (insertError.insertedDocs) {
         insertedCount = insertError.insertedDocs.length;
       }
+
       if (insertError.writeErrors) {
         duplicateCount = insertError.writeErrors.filter(e => e.err?.code === 11000 || e.code === 11000).length;
         const otherErrors = insertError.writeErrors.filter(e => e.err?.code !== 11000 && e.code !== 11000);
         if (otherErrors.length > 0) {
-          console.error('Non-duplicate insert errors:', otherErrors);
+          console.error('[MARK] Non-duplicate insert errors:', otherErrors);
           return res.status(500).json({ 
             message: `Partial failure: ${otherErrors.length} record(s) failed to save`,
             insertedCount,
             errorCount: otherErrors.length
           });
         }
-      } else if (insertError.code !== 11000) {
-        console.error('Insert error:', insertError);
+      } else if (insertError.code === 11000) {
+        // Single duplicate key error
+        duplicateCount = documents.length;
+        insertedCount = 0;
+      } else {
+        console.error('[MARK] Insert error:', insertError.message, insertError.code);
         return res.status(500).json({ message: 'Failed to save records: ' + insertError.message });
       }
+      
+      console.log(`[MARK] Partial result: inserted=${insertedCount}, duplicates=${duplicateCount}`);
     }
 
     // Return the successfully marked records so frontend can use them
@@ -199,14 +223,16 @@ const getUnprocessedData = async (req) => {
 
   let processedRecordsQuery = {};
   if (subjectFilter) {
-    processedRecordsQuery.subject = new RegExp('^' + subjectFilter + '$', 'i');
+    processedRecordsQuery.subject = new RegExp('^' + subjectFilter.trim() + '$', 'i');
   }
   const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
 
-  const processedSet = new Set(processedRecords.map(pr => `${pr.date}_${pr.subject}_${pr.roll}`.toLowerCase()));
+  const processedSet = new Set(processedRecords.map(pr => 
+    `${(pr.date || '').trim()}_${(pr.subject || '').trim()}_${(pr.roll || '').trim()}`.toLowerCase()
+  ));
 
   const unprocessedData = filteredData.filter(row => {
-    const id = `${row.date}_${row.subject}_${row.roll}`.toLowerCase();
+    const id = `${(row.date || '').trim()}_${(row.subject || '').trim()}_${(row.roll || '').trim()}`.toLowerCase();
     return !processedSet.has(id);
   });
 
