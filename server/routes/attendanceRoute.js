@@ -8,6 +8,9 @@ const router = express.Router();
 
 router.use(protect);
 
+// Helper: escape special regex characters in a string so it can be used as a literal match
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // Helper: parse date strings like "22-Apr-26" or "22-Apr-2026" into real Date objects
 const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
 const parseDate = (dateStr) => {
@@ -61,7 +64,7 @@ router.get('/', async (req, res) => {
 
     let processedRecordsQuery = {};
     if (subjectFilter) {
-      processedRecordsQuery.subject = new RegExp('^' + subjectFilter.trim() + '$', 'i');
+      processedRecordsQuery.subject = new RegExp('^' + escapeRegex(subjectFilter.trim()) + '$', 'i');
     }
     const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
 
@@ -184,7 +187,7 @@ router.get('/marked', async (req, res) => {
 
     let query = {};
     if (subjectFilter) {
-      query.subject = new RegExp('^' + subjectFilter + '$', 'i');
+      query.subject = new RegExp('^' + escapeRegex(subjectFilter.trim()) + '$', 'i');
     }
 
     const markedRecords = await ProcessedAttendance.find(query).lean();
@@ -223,7 +226,7 @@ const getUnprocessedData = async (req) => {
 
   let processedRecordsQuery = {};
   if (subjectFilter) {
-    processedRecordsQuery.subject = new RegExp('^' + subjectFilter.trim() + '$', 'i');
+    processedRecordsQuery.subject = new RegExp('^' + escapeRegex(subjectFilter.trim()) + '$', 'i');
   }
   const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
 
