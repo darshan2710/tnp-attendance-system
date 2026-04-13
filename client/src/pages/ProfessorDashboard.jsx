@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Download, CheckCircle2, LogOut, Sun, Moon, ChevronDown, ChevronRight, Archive, KeyRound, X, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import SubjectSelector from '../components/SubjectSelector';
 let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 if (API_BASE.endsWith('/')) API_BASE = API_BASE.slice(0, -1);
 if (API_BASE && !API_BASE.startsWith('http')) API_BASE = `https://${API_BASE}`;
@@ -340,37 +341,14 @@ const ProfessorDashboard = () => {
       {/* ─── Main Content ─── */}
       <div className="main-content">
         <div className="header">
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '10px', letterSpacing: '-0.02em' }}>Subject Attendance</h1>
             
-            {availableSubjects.length > 1 ? (
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <select 
-                  className="input-field" 
-                  style={{ 
-                    padding: '10px 42px 10px 18px', borderRadius: '12px', fontSize: '14px', fontWeight: '600',
-                    color: 'var(--text-primary)', background: 'var(--surface-color)', 
-                    border: '1px solid var(--border-color)', cursor: 'pointer', appearance: 'none', outline: 'none', width: 'auto',
-                    transition: 'border-color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-color)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)' }}
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                >
-                  {availableSubjects.map((sub, i) => (
-                    <option key={i} value={sub} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>{sub}</option>
-                  ))}
-                </select>
-                <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }}>
-                  <ChevronDown size={15} strokeWidth={2} />
-                </div>
-              </div>
-            ) : (
-              <div className="chip" style={{ display: 'inline-block', fontSize: '13px', padding: '6px 16px' }}>
-                {selectedSubject || 'No Subject Assigned'}
-              </div>
-            )}
+            <SubjectSelector 
+              subjects={availableSubjects}
+              selectedSubject={selectedSubject}
+              onSelect={setSelectedSubject}
+            />
           </div>
 
           <div className="actions-bar">
