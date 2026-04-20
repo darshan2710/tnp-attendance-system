@@ -55,6 +55,7 @@ const ProfessorDashboard = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDates, setSelectedDates] = useState(new Set());
+  const [selectedMarkedDates, setSelectedMarkedDates] = useState(new Set());
   const [processing, setProcessing] = useState(false);
   const [expandedDate, setExpandedDate] = useState(null);
 
@@ -102,6 +103,7 @@ const ProfessorDashboard = () => {
       });
       setData(res.data);
       setSelectedDates(new Set());
+      setSelectedMarkedDates(new Set());
       setExpandedDate(null);
     } catch (error) {
       console.error('Failed to fetch data', error);
@@ -166,6 +168,15 @@ const ProfessorDashboard = () => {
     if (newSelected.has(date)) newSelected.delete(date);
     else newSelected.add(date);
     setSelectedDates(newSelected);
+    setSelectedMarkedDates(new Set());
+  };
+
+  const handleSelectMarkedDate = (date) => {
+    const newSelected = new Set(selectedMarkedDates);
+    if (newSelected.has(date)) newSelected.delete(date);
+    else newSelected.add(date);
+    setSelectedMarkedDates(newSelected);
+    setSelectedDates(new Set());
   };
 
   const handleMarkProcessed = async () => {
@@ -230,6 +241,65 @@ const ProfessorDashboard = () => {
     } catch (error) {
       console.error('Mark error:', error);
       const msg = error.response?.data?.message || 'Failed to mark records';
+      showToast(msg, 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleUnmarkProcessed = async () => {
+    if (selectedMarkedDates.size === 0) {
+      showToast('Please select at least one date to unmark', 'error');
+      return;
+    }
+
+    const recordsToUnmark = [];
+    selectedMarkedDates.forEach(date => {
+      if (groupedMarkedData[date]) {
+        groupedMarkedData[date].forEach(row => {
+          recordsToUnmark.push({
+            date: row.date,
+            subject: row.subject,
+            roll: row.roll,
+            name: row.name,
+            reason: row.reason || ''
+          });
+        });
+      }
+    });
+
+    if (recordsToUnmark.length === 0) {
+      showToast('No records found for selected dates', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const res = await axios.post(`${API_BASE}/attendance/unmark`, 
+        { records: recordsToUnmark },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+
+      const unmarkedKeys = new Set(
+        recordsToUnmark.map(r => `${r.date}_${r.subject}_${r.roll}`.toLowerCase())
+      );
+
+      setMarkedData(prev => prev.filter(row => {
+        const key = `${row.date}_${row.subject}_${row.roll}`.toLowerCase();
+        return !unmarkedKeys.has(key);
+      }));
+
+      const restoredPending = recordsToUnmark.map(r => ({ ...r }));
+      setData(prev => [...prev, ...restoredPending]);
+
+      setSelectedMarkedDates(new Set());
+      setMarkedExpandedDate(null);
+
+      const count = res.data.deletedCount || recordsToUnmark.length;
+      showToast(`${count} record${count !== 1 ? 's' : ''} unmarked successfully`);
+    } catch (error) {
+      console.error('Unmark error:', error);
+      const msg = error.response?.data?.message || 'Failed to unmark records';
       showToast(msg, 'error');
     } finally {
       setProcessing(false);
@@ -358,6 +428,12 @@ const ProfessorDashboard = () => {
                 {processing ? 'Marking...' : `Mark ${selectedDates.size} Date${selectedDates.size !== 1 ? 's' : ''}`}
               </button>
             )}
+            {selectedMarkedDates.size > 0 && (
+              <button className="btn" style={{ background: 'var(--danger)', color: 'white', borderColor: 'var(--danger)' }} onClick={handleUnmarkProcessed} disabled={processing}>
+                <Archive size={15} /> 
+                {processing ? 'Unmarking...' : `Unmark ${selectedMarkedDates.size} Date${selectedMarkedDates.size !== 1 ? 's' : ''}`}
+              </button>
+            )}
             <button className="btn btn-success" onClick={handleExportCSV} disabled={!selectedSubject}>
               <Download size={15} /> Download CSV
             </button>
@@ -483,6 +559,13 @@ const ProfessorDashboard = () => {
                         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
+                        <div className="checkbox-wrapper" onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedMarkedDates.has(dateKey)}
+                            onChange={() => handleSelectMarkedDate(dateKey)}
+                          />
+                        </div>
                         <ChevronRight size={14} className={`accordion-chevron ${markedExpandedDate === dateKey ? 'open' : ''}`} />
                         <span style={{ fontSize: '13px', fontWeight: '600' }}>{dateKey}</span>
                         <span className="chip" style={{ fontSize: '10.5px', padding: '2px 8px' }}>

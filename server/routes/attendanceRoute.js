@@ -215,6 +215,34 @@ router.get('/marked', async (req, res) => {
   }
 });
 
+// POST /attendance/unmark — removes records from processed state (back to pending)
+router.post('/unmark', async (req, res) => {
+  try {
+    const { records } = req.body;
+    if (!records || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({ message: 'Invalid input: records array required' });
+    }
+
+    const conditions = records.map(r => ({
+      date: (r.date || '').trim(),
+      subject: (r.subject || '').trim(),
+      roll: (r.roll || '').trim()
+    }));
+
+    const result = await ProcessedAttendance.deleteMany({ $or: conditions });
+    
+    console.log(`[UNMARK] Successfully unmarked ${result.deletedCount} record(s)`);
+
+    res.json({ 
+      message: 'Unmarked successfully',
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('POST /attendance/unmark error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+});
+
 // Helper for download
 const getUnprocessedData = async (req) => {
   const userRole = req.user.role;
@@ -262,7 +290,22 @@ router.get('/download', async (req, res) => {
       return res.status(404).json({ message: 'No data available to download' });
     }
 
-    const csv = Papa.unparse(unprocessedData);
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    // Explicit format as DD-MMM-YYYY and force Excel string encoding to prevent hashes
+    const formattedData = unprocessedData.map(row => {
+      let formattedDateStr = row.date;
+      const parsed = parseDate(row.date);
+      if (parsed.getTime() !== 0) {
+        const d = String(parsed.getDate()).padStart(2, '0');
+        const m = monthNames[parsed.getMonth()];
+        const y = parsed.getFullYear();
+        formattedDateStr = `="${d}-${m}-${y}"`;
+      }
+      return { ...row, date: formattedDateStr };
+    });
+
+    const csv = Papa.unparse(formattedData);
     
     const subjectPrefix = subjectFilter ? subjectFilter : 'global';
     const currentDate = new Date().toISOString().split('T')[0];
