@@ -113,17 +113,28 @@ const ensureCorrectIndexes = async () => {
   }
 };
 
-// Start the server immediately so Railway doesn't timeout
-// Bind to 0.0.0.0 explicitly for Railway container networking
+// Start the server immediately so Railway/Render doesn't timeout
+// Bind to 0.0.0.0 explicitly for container networking
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Connect to MongoDB separately
-mongoose.connect(MONGO_URI)
+// Connect to MongoDB with optimized connection pooling
+mongoose.connect(MONGO_URI, {
+  maxPoolSize: 10,                  // Max 10 simultaneous connections
+  minPoolSize: 2,                   // Keep 2 connections warm at all times
+  serverSelectionTimeoutMS: 5000,   // Fail fast if MongoDB unreachable
+  socketTimeoutMS: 45000,           // Timeout for individual operations
+})
   .then(async () => {
     console.log('Connected to MongoDB');
     await ensureCorrectIndexes();
     await seedAdmin();
+    
+    // Pre-warm the Google Sheets cache so first request is fast
+    const { fetchAttendanceData } = require('./services/googleSheetsService');
+    fetchAttendanceData()
+      .then(() => console.log('[STARTUP] Google Sheets cache warmed'))
+      .catch((err) => console.log('[STARTUP] Sheets pre-warm failed (non-critical):', err.message));
   })
   .catch((err) => console.error('MongoDB connection error:', err));

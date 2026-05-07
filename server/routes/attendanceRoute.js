@@ -1,7 +1,7 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const ProcessedAttendance = require('../models/ProcessedAttendance');
-const { fetchAttendanceData } = require('../services/googleSheetsService');
+const { fetchAttendanceData, invalidateCache } = require('../services/googleSheetsService');
 const Papa = require('papaparse');
 
 const router = express.Router();
@@ -64,18 +64,22 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ message: 'Subject is required for this action.' });
     }
 
-    const allData = await fetchAttendanceData();
-    
-    let filteredData = allData;
-    if (subjectFilter) {
-      filteredData = allData.filter(row => row.subject.toLowerCase() === subjectFilter.toLowerCase());
-    }
-
+    // ══ Build MongoDB query before parallel fetch ══
     let processedRecordsQuery = {};
     if (subjectFilter) {
       processedRecordsQuery.subject = new RegExp('^' + escapeRegex(subjectFilter.trim()) + '$', 'i');
     }
-    const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
+
+    // ══ PARALLEL FETCH — Google Sheets + MongoDB at the same time ══
+    const [allData, processedRecords] = await Promise.all([
+      fetchAttendanceData(),
+      ProcessedAttendance.find(processedRecordsQuery).lean()
+    ]);
+
+    let filteredData = allData;
+    if (subjectFilter) {
+      filteredData = allData.filter(row => row.subject.toLowerCase() === subjectFilter.toLowerCase());
+    }
 
     console.log(`[GET /attendance] Sheet records: ${filteredData.length}, Processed in DB: ${processedRecords.length}`);
 
@@ -199,7 +203,7 @@ router.get('/marked', async (req, res) => {
       query.subject = new RegExp('^' + escapeRegex(subjectFilter.trim()) + '$', 'i');
     }
 
-    const markedRecords = await ProcessedAttendance.find(query).lean();
+    const markedRecords = await ProcessedAttendance.find(query).lean();  // .lean() for plain JS objects
 
     markedRecords.sort((a, b) => {
       const da = parseDate(a.date);
@@ -254,18 +258,22 @@ const getUnprocessedData = async (req) => {
     if (!allowed) throw new Error('Unauthorized access to this subject export');
   }
 
-  const allData = await fetchAttendanceData();
-  
-  let filteredData = allData;
-  if (subjectFilter) {
-    filteredData = allData.filter(row => row.subject.toLowerCase() === subjectFilter.toLowerCase());
-  }
-
+  // ══ Build MongoDB query before parallel fetch ══
   let processedRecordsQuery = {};
   if (subjectFilter) {
     processedRecordsQuery.subject = new RegExp('^' + escapeRegex(subjectFilter.trim()) + '$', 'i');
   }
-  const processedRecords = await ProcessedAttendance.find(processedRecordsQuery);
+
+  // ══ PARALLEL FETCH ══
+  const [allData, processedRecords] = await Promise.all([
+    fetchAttendanceData(),
+    ProcessedAttendance.find(processedRecordsQuery).lean()
+  ]);
+
+  let filteredData = allData;
+  if (subjectFilter) {
+    filteredData = allData.filter(row => row.subject.toLowerCase() === subjectFilter.toLowerCase());
+  }
 
   const processedSet = new Set(processedRecords.map(pr => 
     `${(pr.date || '').trim()}_${(pr.subject || '').trim()}_${(pr.roll || '').trim()}`.toLowerCase()

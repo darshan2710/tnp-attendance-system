@@ -7,7 +7,7 @@ router.use(protect, admin);
 
 router.get('/professors', async (req, res) => {
   try {
-    const professors = await User.find({ role: 'professor' }).select('-password');
+    const professors = await User.find({ role: 'professor' }).select('-password').lean();
     res.json(professors);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

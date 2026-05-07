@@ -3,9 +3,23 @@ const Papa = require('papaparse');
 
 const SHEET_EXPORT_URL = 'https://docs.google.com/spreadsheets/d/1Gvj7g-xwIAQEurLraGoJ-Rv6TZLiGSrUcTdoi_mpg7A/export?format=csv';
 
-const fetchAttendanceData = async () => {
+// ═══ IN-MEMORY CACHE ═══
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+let cachedData = null;
+let cacheTimestamp = 0;
+
+const fetchAttendanceData = async (forceRefresh = false) => {
+  const now = Date.now();
+
+  // Return cached data if still fresh
+  if (!forceRefresh && cachedData && (now - cacheTimestamp) < CACHE_TTL_MS) {
+    console.log('[SHEETS] Returning cached data');
+    return cachedData;
+  }
+
   try {
-    const response = await axios.get(SHEET_EXPORT_URL);
+    console.log('[SHEETS] Fetching fresh data from Google Sheets...');
+    const response = await axios.get(SHEET_EXPORT_URL, { timeout: 10000 });
     const parsed = Papa.parse(response.data, {
       header: true,
       skipEmptyLines: true
@@ -34,12 +48,27 @@ const fetchAttendanceData = async () => {
         records.push({ date, roll, name, subject, reason });
       });
     });
+
+    // Update cache
+    cachedData = records;
+    cacheTimestamp = now;
     
     return records;
   } catch (error) {
     console.error('Error fetching Google Sheets data:', error.message);
+    // If fetch fails but we have stale cache, return it rather than crashing
+    if (cachedData) {
+      console.log('[SHEETS] Fetch failed, returning stale cache');
+      return cachedData;
+    }
     throw new Error('Could not fetch data from Google Sheets');
   }
 };
 
-module.exports = { fetchAttendanceData };
+// Invalidate cache (call after marking/unmarking to keep data fresh)
+const invalidateCache = () => {
+  cachedData = null;
+  cacheTimestamp = 0;
+};
+
+module.exports = { fetchAttendanceData, invalidateCache };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getPrefetchedData } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Download, CheckCircle2, LogOut, Sun, Moon, ChevronDown, ChevronRight, Archive, KeyRound, X, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import SubjectSelector from '../components/SubjectSelector';
@@ -97,6 +97,21 @@ const ProfessorDashboard = () => {
   const fetchData = async (subjectContext) => {
     try {
       setLoading(true);
+
+      // Check for prefetched data first (from login flow)
+      const prefetched = getPrefetchedData();
+      if (prefetched) {
+        const prefetchedResult = await prefetched;
+        if (prefetchedResult) {
+          setData(prefetchedResult);
+          setSelectedDates(new Set());
+          setSelectedMarkedDates(new Set());
+          setExpandedDate(null);
+          return;
+        }
+      }
+
+      // Normal fetch (subsequent loads or if prefetch missed)
       const res = await axios.get(`${API_BASE}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` },
         params: { subject: subjectContext }

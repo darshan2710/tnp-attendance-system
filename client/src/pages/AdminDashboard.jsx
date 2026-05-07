@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getPrefetchedData } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
 let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -108,6 +108,18 @@ const AdminDashboard = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true);
+
+      // Check for prefetched data first (from login flow)
+      const prefetched = getPrefetchedData();
+      if (prefetched) {
+        const prefetchedResult = await prefetched;
+        if (prefetchedResult) {
+          setData(prefetchedResult);
+          return;
+        }
+      }
+
+      // Normal fetch
       const res = await axios.get(`${API_BASE}/attendance`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
