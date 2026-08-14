@@ -5,24 +5,8 @@ import { useTheme } from '../context/ThemeContext';
 import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
 let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 if (API_BASE.endsWith('/')) API_BASE = API_BASE.slice(0, -1);
-if (API_BASE && !API_BASE.startsWith('http')) API_BASE = `https://${API_BASE}`;
-const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
-const parseDate = (dateStr) => {
-  if (!dateStr) return new Date(0);
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const monthStr = parts[1].toLowerCase().slice(0, 3);
-    const month = MONTHS[monthStr];
-    let year = parseInt(parts[2], 10);
-    if (year < 100) year += 2000;
-    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
-      return new Date(year, month, day);
-    }
-  }
-  const parsed = new Date(dateStr);
-  return isNaN(parsed.getTime()) ? new Date(0) : parsed;
-};
+import { parseDate } from '../utils/dateUtils';
+
 
 // ─── Toast Component ───
 const Toast = ({ message, type, onClose }) => {
