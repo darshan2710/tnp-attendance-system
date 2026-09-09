@@ -271,6 +271,103 @@ router.post('/unmark', async (req, res) => {
   }
 });
 
+// POST /attendance/mark-dates-done — admin bulk-marks all records for selected dates as processed
+router.post('/mark-dates-done', async (req, res) => {
+  try {
+    // Admin only
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can use this endpoint' });
+    }
+
+    const { dates } = req.body;
+    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({ message: 'Invalid input: dates array required' });
+    }
+
+    // Fetch all sheet data and current processed records in parallel
+    const [allData, processedRecords] = await Promise.all([
+      fetchAttendanceData(),
+      ProcessedAttendance.find({}).lean()
+    ]);
+
+    // Build processed set for dedup
+    const processedSet = new Set(processedRecords.map(pr =>
+      `${(pr.date || '').trim()}_${(pr.subject || '').trim()}_${(pr.roll || '').trim()}`.toLowerCase()
+    ));
+
+    // Normalize requested dates into a Set for fast lookup
+    const requestedDates = new Set(dates.map(d => (d || '').trim()));
+
+    // Filter to unprocessed records matching the requested dates
+    const recordsToMark = allData.filter(row => {
+      if (!requestedDates.has((row.date || '').trim())) return false;
+      const id = `${(row.date || '').trim()}_${(row.subject || '').trim()}_${(row.roll || '').trim()}`.toLowerCase();
+      return !processedSet.has(id);
+    });
+
+    if (recordsToMark.length === 0) {
+      return res.json({ message: 'No unprocessed records found for the selected dates', insertedCount: 0, duplicateCount: 0 });
+    }
+
+    const documents = recordsToMark.map(r => ({
+      date: (r.date || '').trim(),
+      subject: (r.subject || '').trim(),
+      roll: (r.roll || '').trim(),
+      name: (r.name || '').trim(),
+      reason: (r.reason || '').trim()
+    }));
+
+    console.log(`[MARK-DATES-DONE] Marking ${documents.length} record(s) across ${dates.length} date(s) as done`);
+
+    let insertedCount = 0;
+    let duplicateCount = 0;
+
+    try {
+      const result = await ProcessedAttendance.insertMany(documents, { ordered: false });
+      insertedCount = result.length;
+    } catch (insertError) {
+      if (insertError.insertedCount !== undefined) {
+        insertedCount = insertError.insertedCount;
+      } else if (insertError.result?.nInserted !== undefined) {
+        insertedCount = insertError.result.nInserted;
+      } else if (insertError.insertedDocs) {
+        insertedCount = insertError.insertedDocs.length;
+      }
+
+      if (insertError.writeErrors) {
+        duplicateCount = insertError.writeErrors.filter(e => e.err?.code === 11000 || e.code === 11000).length;
+        const otherErrors = insertError.writeErrors.filter(e => e.err?.code !== 11000 && e.code !== 11000);
+        if (otherErrors.length > 0) {
+          console.error('[MARK-DATES-DONE] Non-duplicate errors:', otherErrors);
+          return res.status(500).json({
+            message: `Partial failure: ${otherErrors.length} record(s) failed`,
+            insertedCount,
+            errorCount: otherErrors.length
+          });
+        }
+      } else if (insertError.code === 11000) {
+        duplicateCount = documents.length;
+        insertedCount = 0;
+      } else {
+        console.error('[MARK-DATES-DONE] Insert error:', insertError.message);
+        return res.status(500).json({ message: 'Failed to mark records: ' + insertError.message });
+      }
+    }
+
+    console.log(`[MARK-DATES-DONE] Done: inserted=${insertedCount}, duplicates=${duplicateCount}`);
+
+    res.json({
+      message: 'Selected dates marked as done',
+      insertedCount,
+      duplicateCount,
+      datesProcessed: dates.length
+    });
+  } catch (error) {
+    console.error('POST /attendance/mark-dates-done error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+});
+
 // Helper for download
 const getUnprocessedData = async (req) => {
   const userRole = req.user.role;

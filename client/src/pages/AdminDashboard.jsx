@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth, getPrefetchedData } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import { Download, Users, Trash2, Plus, LogOut, CheckCircle2, Sun, Moon, Edit2, Check, X, ChevronRight, Archive, KeyRound, Inbox, FileSpreadsheet, AlertCircle, Square, CheckSquare } from 'lucide-react';
 let API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 if (API_BASE.endsWith('/')) API_BASE = API_BASE.slice(0, -1);
 import { parseDate } from '../utils/dateUtils';
@@ -47,6 +47,11 @@ const AdminDashboard = () => {
   const [editingId, setEditingId] = useState(null);
   const [editSubjectsInput, setEditSubjectsInput] = useState('');
   const [expandedDate, setExpandedDate] = useState(null);
+
+  // Mark-as-done selection
+  const [selectedDates, setSelectedDates] = useState(new Set());
+  const [markingDone, setMarkingDone] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Marked attendances
   const [showMarked, setShowMarked] = useState(false);
@@ -254,9 +259,9 @@ const AdminDashboard = () => {
   };
 
   const handleToggleMarked = () => {
-    const next = !showMarked;
-    setShowMarked(next);
-    if (next) fetchMarkedAttendances();
+    const nextVal = !showMarked;
+    setShowMarked(nextVal);
+    if (nextVal) fetchMarkedAttendances();
   };
 
   const handleChangePassword = async (e) => {
@@ -286,6 +291,48 @@ const AdminDashboard = () => {
     setShowPasswordModal(false);
     setPasswordError(''); setPasswordSuccess('');
     setCurrentPassword(''); setNewPwd(''); setConfirmPwd('');
+  };
+
+  // ── Mark-as-Done handlers ──
+  const toggleDateSelection = (dateKey, e) => {
+    e.stopPropagation();
+    setSelectedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(dateKey)) next.delete(dateKey);
+      else next.add(dateKey);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDates.size === datesList.length) {
+      setSelectedDates(new Set());
+    } else {
+      setSelectedDates(new Set(datesList));
+    }
+  };
+
+  const handleMarkAsDone = async () => {
+    setShowConfirmModal(false);
+    const datesToMark = Array.from(selectedDates);
+    if (datesToMark.length === 0) return;
+
+    try {
+      setMarkingDone(true);
+      await axios.post(`${API_BASE}/attendance/mark-dates-done`,
+        { dates: datesToMark },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      showToast(`${datesToMark.length} date(s) marked as done`);
+      setSelectedDates(new Set());
+      // Refresh both lists
+      await fetchAttendance();
+      if (showMarked) fetchMarkedAttendances();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to mark dates as done', 'error');
+    } finally {
+      setMarkingDone(false);
+    }
   };
 
   return (
@@ -336,6 +383,11 @@ const AdminDashboard = () => {
                 <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>All master sheet records pending processing</p>
               </div>
               <div className="actions-bar">
+                {selectedDates.size > 0 && (
+                  <button className="btn btn-mark-done" onClick={() => setShowConfirmModal(true)} disabled={markingDone}>
+                    <CheckCircle2 size={15} /> {markingDone ? 'Marking...' : `Mark as Done (${selectedDates.size})`}
+                  </button>
+                )}
                 <button className="btn btn-success" onClick={handleExportCSV}>
                   <Download size={15} /> Download CSV
                 </button>
@@ -362,6 +414,11 @@ const AdminDashboard = () => {
                   <table>
                     <thead>
                       <tr>
+                        <th style={{ width: '40px', textAlign: 'center', cursor: 'pointer' }} onClick={toggleSelectAll}>
+                          {selectedDates.size === datesList.length && datesList.length > 0
+                            ? <CheckSquare size={16} className="mark-done-checkbox checked" />
+                            : <Square size={16} className="mark-done-checkbox" />}
+                        </th>
                         <th>Date</th>
                         <th>Registration Number</th>
                         <th>Student Name</th>
@@ -372,8 +429,14 @@ const AdminDashboard = () => {
                     <tbody>
                       {datesList.map(dateKey => (
                         <React.Fragment key={dateKey}>
-                          <tr className="accordion-header-row"
+                          <tr className={`accordion-header-row ${selectedDates.has(dateKey) ? 'selected' : ''}`}
                             onClick={() => setExpandedDate(prev => prev === dateKey ? null : dateKey)}>
+                            <td style={{ width: '40px', textAlign: 'center', padding: '12px 8px 12px 18px' }}
+                              onClick={(e) => toggleDateSelection(dateKey, e)}>
+                              {selectedDates.has(dateKey)
+                                ? <CheckSquare size={16} className="mark-done-checkbox checked" />
+                                : <Square size={16} className="mark-done-checkbox" />}
+                            </td>
                             <td colSpan="5">
                               <div className="accordion-inner">
                                 <ChevronRight size={15} className={`accordion-chevron ${expandedDate === dateKey ? 'open' : ''}`} />
@@ -386,6 +449,7 @@ const AdminDashboard = () => {
                           </tr>
                           {expandedDate === dateKey && groupedData[dateKey].map((row, idx) => (
                             <tr key={`${dateKey}-${row.roll}-${idx}`}>
+                              <td></td>
                               <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{row.date}</td>
                               <td style={{ fontWeight: '600' }}>{row.roll}</td>
                               <td>{row.name}</td>
@@ -636,6 +700,43 @@ const AdminDashboard = () => {
                 <KeyRound size={15} /> {passwordLoading ? 'Changing...' : 'Change Password'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Mark as Done Confirmation Modal ─── */}
+      {showConfirmModal && (
+        <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h3>Confirm Mark as Done</h3>
+              <button className="modal-close" onClick={() => setShowConfirmModal(false)}><X size={18} /></button>
+            </div>
+            <div style={{ padding: '0 24px 20px', fontSize: '13.5px', lineHeight: '1.6' }}>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                You are about to mark <strong style={{ color: 'var(--text-primary)' }}>{selectedDates.size} date{selectedDates.size !== 1 ? 's' : ''}</strong> as done.
+                This will move <strong style={{ color: 'var(--text-primary)' }}>
+                  {Array.from(selectedDates).reduce((sum, d) => sum + (groupedData[d]?.length || 0), 0)} record{Array.from(selectedDates).reduce((sum, d) => sum + (groupedData[d]?.length || 0), 0) !== 1 ? 's' : ''}
+                </strong> to the Marked Attendances section.
+              </p>
+              <div style={{
+                background: 'var(--surface-color)', border: '1px solid var(--border-color)',
+                borderRadius: '10px', padding: '12px 16px', maxHeight: '160px', overflowY: 'auto', marginBottom: '18px'
+              }}>
+                {Array.from(selectedDates).sort((a, b) => parseDate(a).getTime() - parseDate(b).getTime()).map(d => (
+                  <div key={d} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12.5px' }}>
+                    <span style={{ fontWeight: '600' }}>{d}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{groupedData[d]?.length || 0} records</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setShowConfirmModal(false)}>Cancel</button>
+                <button className="btn btn-mark-done" onClick={handleMarkAsDone}>
+                  <CheckCircle2 size={15} /> Confirm
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

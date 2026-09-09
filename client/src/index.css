@@ -435,6 +435,56 @@ tbody tr {
 }
 
 /* ============================================
+   MARK AS DONE — CHECKBOXES & BUTTON
+   ============================================ */
+
+.mark-done-checkbox {
+  color: var(--text-muted);
+  transition: color 0.2s ease, transform 0.15s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mark-done-checkbox:hover {
+  color: var(--accent-color);
+}
+
+.mark-done-checkbox.checked {
+  color: var(--accent-color);
+}
+
+.accordion-header-row.selected td {
+  background: var(--accent-subtle) !important;
+}
+
+.btn-mark-done {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  color: white;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-mark-done:hover {
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-mark-done:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================
    MARKED ATTENDANCES SECTION
    ============================================ */
 
@@ -786,6 +836,18 @@ body.light-mode .accordion-header-row td {
 
 body.light-mode .accordion-header-row:hover td {
   background: rgba(99, 102, 241, 0.04) !important;
+}
+
+body.light-mode .accordion-header-row.selected td {
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+body.light-mode .mark-done-checkbox {
+  color: #94a3b8;
+}
+
+body.light-mode .mark-done-checkbox.checked {
+  color: #6366f1;
 }
 
 body.light-mode ::-webkit-scrollbar-thumb {
